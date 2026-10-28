@@ -11,6 +11,11 @@ not proof of publication, GitHub Actions execution, or restoration in a new clou
   approval, real MCP subprocess round trips, public follow-up context, cost/step/context/deadline controls,
   rate limits, missing-provider handling, and HTTP security boundaries.
 - Ruff checks and JavaScript syntax check (`node --check src/rafeeq/web/app.js`).
+- Redesigned interface checked in Chromium at desktop, 390px phone, 768px tablet and 1024px widths,
+  including Arabic RTL, service prompt shortcuts, real form verification, clearing sensitive form fields,
+  and explicit preview mode. No JavaScript errors, failed asset requests or horizontal overflow were observed.
+  Relative CSS/JS routes and content types are covered by the API boundary test. Direct `file:` navigation is
+  blocked by the managed browser policy, so preview behavior was checked using `?preview=1` on the service.
 - Actual local HTTP smoke: HTML 200, health 200, session 200, verification 200, missing-key chat returns a
   structured `provider_error`, and unauthorized officer access returns 403. No AI answer was produced.
 - Offline attack/defence demonstration (`python -m rafeeq.redteam`): isolated unguarded fixture read discloses
@@ -48,8 +53,8 @@ answer correctness are not evaluated by this retrieval benchmark.
 4. Review real A/B transcripts, export synthetic-only CSVs, write end-to-end failure analysis, and repeat important
    action/privacy cases if the provider budget permits. The free router is deliberately rejected for controlled evals.
 5. Execute the live prompt-injection experiment and record a bilingual live demo plus a backup video.
-6. Perform browser visual/accessibility review, a clean-clone installation, and verify the new CI workflow on GitHub.
-   HTML serving and JavaScript syntax were checked; browser rendering has not been visually inspected here.
+6. Complete an accessibility audit, a clean-clone installation, and verify the new CI workflow on GitHub.
+   Desktop/mobile/RTL browser rendering was visually inspected; a full accessibility audit remains outstanding.
 7. Add team names and prepare final slides using the presentation outline.
 
 The environment draft saves installation/start instructions and the OpenRouter secret/destination requirement;

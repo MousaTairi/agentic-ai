@@ -194,6 +194,9 @@ async def test_private_history_is_not_retained(store):
 def test_api_boundary_html_validation_and_officer_auth(tmp_path):
     with TestClient(create_app(Settings(runtime=tmp_path, officer_token="test-officer"))) as client:
         assert client.get("/").status_code == 200
+        assert 'href="./style.css"' in client.get("/").text
+        assert client.get("/style.css").headers["content-type"].startswith("text/css")
+        assert client.get("/app.js").headers["content-type"].startswith("text/javascript")
         assert "default-src 'self'" in client.get("/").headers["content-security-policy"]
         assert client.post("/api/session").status_code == 403
         client.headers["X-Rafeeq-Client"] = "1"

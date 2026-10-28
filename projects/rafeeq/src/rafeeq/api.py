@@ -67,6 +67,15 @@ def create_app(settings: Settings | None = None, model: Model | None = None) -> 
     def index():
         return FileResponse(web / "index.html")
 
+    # Relative assets also support opening the HTML directly for a visual preview.
+    @app.get("/style.css", include_in_schema=False)
+    def stylesheet():
+        return FileResponse(web / "style.css", media_type="text/css")
+
+    @app.get("/app.js", include_in_schema=False)
+    def javascript():
+        return FileResponse(web / "app.js", media_type="text/javascript")
+
     @app.get("/healthz")
     def health():
         return {"ok": True, "ai_configured": bool(settings.api_key), "model": settings.model,

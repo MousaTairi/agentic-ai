@@ -5,6 +5,8 @@ A bilingual permit assistant for citizens of fictional Madar Municipal Services.
 **SDAIA capstone track:** 1 — Rafeeq in production. This is an educational service using synthetic records;
 it does not issue real permits, send emails, or transfer money. Team: fill in your name(s) before submission.
 
+![Rafeeq citizen portal](docs/interface-desktop.png)
+
 ## Run
 
 From a clone of **this entire course fork**, with Python 3.12 and [uv](https://docs.astral.sh/uv/):
@@ -17,8 +19,10 @@ cp .env.example .env  # first run only; preserve an existing .env
 uv run uvicorn rafeeq.api:create_app --factory --host 127.0.0.1 --port 8000
 ```
 
-Open the local interface in your browser. The backend serves `src/rafeeq/web/index.html`; opening it as a
-standalone file does not provide API connectivity. No Node build is needed. The API schema is at `/openapi.json`.
+Open the local interface in your browser. The backend serves `src/rafeeq/web/index.html` with local CSS and
+JavaScript assets; no Node build or external fonts are needed. Opening the HTML directly provides a styled
+preview with language switching; chat and verification require the backend. Add `?preview=1` to the served
+page to explore that preview mode explicitly. The API schema is at `/openapi.json`.
 The application loads this project's `.env` automatically; already exported variables take precedence.
 Never commit `.env`, paste keys into chat, or put keys into HTML. `.env.example` explains each supported setting.
 Free-provider model names, availability and quotas change; verify them in your OpenRouter dashboard.
