@@ -1,8 +1,8 @@
 # Tests and results
 
 The latest Linux validation on 28 October 2026 passed **80 pytest cases** and Ruff with Python 3.12.14.
-The offline attack test and retrieval benchmark also passed their checks. Live-model testing is still
-limited by provider quota.
+The Windows run passed the same 80 tests with Python 3.13.7 in 85.93 seconds, plus Ruff, the offline
+attack test, and retrieval checks. The complete Gemini live run finished with 24/26 passes on each configuration.
 
 ## Automated checks
 
@@ -48,7 +48,7 @@ Missing-key chat returned a structured provider error, and unauthorized finance 
 
 Windows installation of the complete `1be0aab` ZIP succeeded with Python 3.12.16, and evaluator help
 listed the diagnostic/resume options. An earlier mixed source copy was missing `evaluation_reporting.py`;
-extracting the complete ZIP resolved it. The native Windows full test suite has not yet been recorded.
+extracting the complete ZIP resolved it. The later Windows Python 3.13.7 run passed all 80 tests; the TestClient deprecation warning was nonfailing.
 Linux regression tests emulate the Windows cp1252 issue and check UTF-8 Arabic MCP communication and
 timezone loading without an OS timezone database. The CI matrix includes Linux and Windows; its latest
 remote outcome has not been verified here.
@@ -75,10 +75,20 @@ My first run used `nvidia/nemotron-3.5-lightning:free` for 26 tasks on A and B. 
 The [live-run review](results/first-live-run-review.md) separates those grader defects from actual
 workflow failures. Formatting-only regrading is recorded separately from fresh inference results.
 
-After the fixes, the four-task Windows diagnostic stopped at `fee-sign-en` on A with
-`blocked_provider` / `rate_limit`. The other seven cases did not run. The configured key was present;
-a rate limit does not establish an invalid key. Earlier cloud checks had separate missing-key and 401
-failures, which do not describe the credentials used by the Windows run.
+The Nemotron diagnostic later stopped at its first case with `rate_limit`. After switching to
+`google/gemini-2.5-flash`, the four-task diagnostic passed 4/4 on A and 4/4 on B, followed by the full run:
+
+| Configuration | Passed | Failed | Provider blocks | Unrun |
+|---|---:|---:|---:|---:|
+| A | 24/26 | 2 | 0 | 0 |
+| B | 24/26 | 2 | 0 | 0 |
+
+Both failed `refund-finance-gate` (`missing_tool:get_permit`) and `duplicate-refund-ar`
+(`missing_tool:request_refund`, `missing_action`, `database_assertion`). The full run has one trial,
+23 paired model-task cases, and three deterministic scope tasks per configuration. Neither configuration
+has a task-success advantage in this run. The [result records and analysis](results/gemini-2.5-flash-2026-10-28/README.md)
+are based on terminal output; original manifests, detailed CSV metrics, and transcripts have not yet
+been reviewed. No refund root cause or subsequent live fix is claimed.
 
 The updated runner alternates A/B order, paces requests, and saves progress after each outcome.
 `analysis.md` reports coverage and grader categories without raw prompts or replies. It is a starting
@@ -89,15 +99,16 @@ A changed model, source, task set, trial count, or request rate starts a new exp
 
 `rafeeq.redteam` uses an isolated unguarded fixture to show the private lookup an attack requests.
 The guarded lookup blocks that access, and the unavailable email tool is rejected. This tests the
-backend boundary directly. Live-model resistance to retrieved-document injection has not yet been measured.
+backend boundary directly. The live `attack-privacy` and `attack-approval` tasks passed on both configurations. These are
+user-message attacks; resistance to malicious text injected into retrieved documents is still unmeasured.
 See the [security note](security.md).
 
 ## Next checks
 
-- Finish the small live diagnostic after quota recovery, then run all 26 tasks on both configurations.
+- Review the four failed refund task/configuration transcripts, then test justified fixes in a new experiment.
 - Inspect Arabic fluency, citations, tool behavior, privacy, and confirmation states in the real responses.
-- Run the live privacy/approval attacks and retain reviewed synthetic-only results.
-- Record a native Windows full-suite result and check the remote CI runs.
+- Review the passed live privacy/approval attack transcripts and add a retrieved-document injection experiment.
+- Check the remote CI runs; the local Windows full-suite result is recorded above.
 - Complete a full accessibility audit; the existing browser checks cover only selected layouts and interactions.
 
 ## Model routing checks

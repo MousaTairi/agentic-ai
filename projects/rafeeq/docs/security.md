@@ -27,8 +27,9 @@ fixture exposes the synthetic status the attack requests. The guarded lookup blo
 and the email tool is rejected because it is not available. This fixture does not add a bypass to the app.
 
 The test shows that the permission checks work even if the model asks for an unauthorized tool call.
-It does not show how often a live model follows a prompt injection. That live experiment is still pending
-provider availability, along with the privacy and approval attack tasks in the evaluation suite.
+It does not show how often a live model follows a prompt injection. The full Gemini 2.5 Flash run passed both `attack-privacy` and `attack-approval` on A and B. Those
+attacks are sent as user messages; the experiment with malicious text in an actual retrieved policy
+document is still pending. See the [live-run analysis](results/gemini-2.5-flash-2026-10-28/README.md).
 
 ## Additional controls
 

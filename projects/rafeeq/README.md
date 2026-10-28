@@ -40,8 +40,8 @@ py -m uv sync --frozen --python 3.12
 if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 ```
 
-Edit `.env` and set `OPENROUTER_API_KEY` and `RAFEEQ_MODEL`. The model used in the current experiment is
-`nvidia/nemotron-3.5-lightning:free`. It needs tool-calling support and available OpenRouter quota.
+Edit `.env` and set `OPENROUTER_API_KEY` and `RAFEEQ_MODEL`. The completed live evaluation used
+`google/gemini-2.5-flash`; the default free-model configuration is described below. It needs tool-calling support and available OpenRouter quota.
 Keep the key in `.env`; the backend loads it automatically. Existing environment variables take precedence.
 
 ```powershell
@@ -219,7 +219,8 @@ py -m uv run python -m rafeeq.evaluate retrieval
 
 On Linux/macOS, use `uv run` in place of `py -m uv run`.
 
-The latest Linux check passed **80 tests** and Ruff. Tests cover real MCP/database workflows,
+The latest Linux check passed **80 tests** and Ruff. The Windows run also passed **80 tests**
+with Python 3.13.7, plus Ruff, the offline security check, and the same retrieval benchmark. Tests cover real MCP/database workflows,
 registration, confirmations, privacy, budgets, and evaluation checkpoints. The offline security test
 blocks unauthorized record access and an unavailable email tool. [Verification notes](docs/verification.md)
 describe the browser checks and Windows coverage.
@@ -236,20 +237,31 @@ The retrieval benchmark uses 20 bilingual queries:
 B finds more of the expected policies in this small benchmark. Both still miss the Arabic building-document
 query. These results measure retrieval, not the full agent.
 
-My first live evaluation used 26 tasks on each configuration. A passed 8/26 and B passed 3/26, but
-30 of the 52 outcomes were blocked by HTTP 429. All model-dependent B tasks were blocked, so the run
-cannot tell us which configuration works better. Six A failures came from the grader rejecting Unicode
-hyphens in otherwise correct citations. Regrading those answers changes A to 14/26 without making new
-model calls. [The full analysis](docs/results/first-live-run-review.md) separates those grading errors
-from actual workflow failures.
+My first complete Gemini 2.5 Flash evaluation ran all 26 tasks on each configuration:
 
-The fixes pass local regression tests. A fresh Windows diagnostic stopped on its first case with
-`rate_limit`; the other seven cases did not run. The updated agent still needs a complete live evaluation.
+| Configuration | Passed | Agent failures | Provider blocks | Unrun |
+|---|---:|---:|---:|---:|
+| A | 24/26 (92.3%) | 2 | 0 | 0 |
+| B | 24/26 (92.3%) | 2 | 0 | 0 |
+
+Both failed the same refund tasks: `refund-finance-gate` omitted the required `get_permit` call;
+`duplicate-refund-ar` produced no refund proposal or expected database record. All other tasks passed,
+including inspection confirmations, privacy checks, registration, and the two user-message attack cases.
+Three passes per configuration are scope refusals without model calls. This was one trial per task,
+so it does not establish repeated-run reliability or an A/B winner.
+
+[Results and refund failure analysis](docs/results/gemini-2.5-flash-2026-10-28/README.md) include a
+terminal-derived per-task CSV and summary. Full transcript review is still pending.
+
+An earlier Nemotron run was quota-blocked: A passed 8/26 and B 3/26, with 30 provider blocks.
+Six A failures were citation-format grader errors; regrading the old answers changes A to 14/26.
+That [earlier analysis](docs/results/first-live-run-review.md) remains separate from the Gemini run:
+the model and code changed, so the scores are not a controlled before/after comparison.
 
 ### Run a live diagnostic
 
 ```powershell
-$env:RAFEEQ_MODEL = "nvidia/nemotron-3.5-lightning:free"
+$env:RAFEEQ_MODEL = "google/gemini-2.5-flash"
 py -m uv run python -m rafeeq.evaluate live --task-ids fee-sign-en fee-foodtruck-ar status-verified-en status-verified-ar --requests-per-minute 10
 ```
 
@@ -293,8 +305,9 @@ or staff SSO. The last-four-digits/mobile check is a simulation. Appeals are gui
 Withdrawn-application refunds go to a finance officer because the sample records do not prove the
 withdrawal stage. Later-stage repeat inspections also need officer handling.
 
-The next work is a complete live A/B run, a review of its failures, and live privacy/approval attack tests.
-A full accessibility audit and a native Windows full-suite result are also pending. Real deployment
+The next work is transcript review of the two refund failures, targeted fixes, and a new live run
+to measure those changes. The existing user-message privacy/approval attacks passed on both configurations.
+A full accessibility audit and a retrieved-document injection experiment are also pending. Real deployment
 would need stronger identity, account/IP rate limits, retention controls, and operational monitoring.
 
 ## Course background and credits

@@ -1,0 +1,47 @@
+{
+  "source": "Pasted Windows terminal output; not the original summary.json file",
+  "model": "google/gemini-2.5-flash",
+  "run_folder": "live-20261028T202318317740",
+  "date": "2026-10-28",
+  "trials": 1,
+  "requests_per_minute": 10,
+  "reported_summary": {
+    "A": {
+      "runs": 26,
+      "planned_runs": 26,
+      "passed": 24,
+      "failed_agent": 2,
+      "blocked_provider": 0,
+      "unrun": 0,
+      "overall_pass_rate": 0.9230769230769231,
+      "available_run_pass_rate": 0.9230769230769231,
+      "failures": {
+        "missing_tool:get_permit": 1,
+        "database_assertion": 1,
+        "missing_action": 1,
+        "missing_tool:request_refund": 1
+      }
+    },
+    "B": {
+      "runs": 26,
+      "planned_runs": 26,
+      "passed": 24,
+      "failed_agent": 2,
+      "blocked_provider": 0,
+      "unrun": 0,
+      "overall_pass_rate": 0.9230769230769231,
+      "available_run_pass_rate": 0.9230769230769231,
+      "failures": {
+        "missing_tool:get_permit": 1,
+        "database_assertion": 1,
+        "missing_action": 1,
+        "missing_tool:request_refund": 1
+      }
+    },
+    "comparison": {
+      "complete": true,
+      "paired_model_task_runs": 23,
+      "note": "Provider blocks and unrun tasks are not model-quality failures. Scope-only passes do not measure LLM quality."
+    }
+  }
+}
