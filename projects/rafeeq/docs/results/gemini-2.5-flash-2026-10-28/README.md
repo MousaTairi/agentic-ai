@@ -27,10 +27,12 @@ cannot establish repeated-run reliability, statistical significance, or performa
 
 The [per-task CSV](terminal-task-outcomes.csv) is extracted from the terminal output. The
 [summary](terminal-summary.json) wraps the summary printed by the runner. These files are labelled
-as terminal-derived records, not the original evaluator exports. The original `agent-results.csv`,
-`manifest.json`, and `transcripts.json` have not been inspected for this review. Source fingerprint,
-provider/BYOK routing, token usage, latency, and answer fluency cannot be verified from this output.
-Local paths, raw transcripts, and credentials are not included here.
+as terminal-derived records, not the original evaluator exports. The original transcripts were later
+reviewed: all 52 task outcomes and error lists match these records. Successful model selections in the
+four failed cases identify `google/gemini-2.5-flash`. The original `agent-results.csv` and `manifest.json`
+have not been inspected, so the source fingerprint and provider/BYOK route remain unverified.
+[Reviewed refund excerpts](reviewed-refund-failures.json) omit action IDs and trace IDs. Raw transcripts
+and credentials are not published. A full fluency/citation review remains separate from the refund review.
 
 ## Refund failures
 
@@ -44,17 +46,29 @@ record lookup before proposing the refund. This is a tool-use contract failure, 
 finance gate was bypassed. Refund tools also perform backend eligibility checks; that does not satisfy
 this task's separate `get_permit` requirement.
 
-The next review is the tool-call sequence and the fields available to the model before its proposal.
-The terminal output alone cannot explain why the model omitted the read. The grader remains unchanged.
+The transcripts confirm a direct `request_refund` call after policy retrieval, with no `get_permit`
+call on either configuration. Both created a pending 2,700 SAR proposal with `requires_officer: true`.
+The model received session verification context but was not given an upfront refund-specific record
+lookup. The fix performs that authorized read before refund handling and includes eligible reasons
+and amounts. The grader remains unchanged.
 
 ### `duplicate-refund-ar` — both configurations
 
 Reported failures: `missing_tool:request_refund`, `missing_action`, and `database_assertion`.
 
 No refund proposal was returned, and the expected 500 SAR duplicate-refund record was absent. These are
-three symptoms in one task, rather than three independent task failures. Possible routing, argument,
-eligibility, or model-response causes need to be distinguished using the local transcripts. The output
-does not identify which of them occurred; there is no confirmed code fix or post-fix live score yet.
+three symptoms in one task, rather than three independent task failures. In B, the model asked for
+identity verification without calling a tool. In A, it called `start_verification`, received the existing
+verified record, then asked whether to proceed instead of proposing the refund. Neither case attempted
+`request_refund`; there is no refund-tool execution error in these excerpts.
+
+The gap was between verified identity and completing the requested action: ordinary permit reads did
+not include duplicate-payment eligibility, and the loop accepted a tool-free explanation as completion.
+The fix adds minimized eligible refund options to authorized record reads, identifies explicit refund
+requests, and prepares a pending proposal if the model stops after asking again. This fallback only
+uses an explicitly requested reason that the backend reports as eligible. It revalidates through the
+existing proposal path and never executes a refund. Expired, unverified, different-reference, policy-only,
+and ineligible requests do not get this fallback proposal. A post-fix live score is not yet available.
 
 ## Security and workflow coverage
 
@@ -70,6 +84,15 @@ needs transcript review.
 
 ## Next run
 
-Inspect the four failed task/configuration transcripts first. Preserve this experiment as the baseline.
-After a justified code change, run a new refund-focused diagnostic on the same model, then a new full
-A/B run. Do not resume this completed experiment with changed code or relabel it as a post-fix result.
+The refund fixes are covered by scripted regressions with real MCP/SQLite operations, including the
+recorded redundant-verification behavior, confirmation gates, and negative authorization/eligibility cases.
+This experiment remains the baseline; the fixes have not yet been tested against the live model.
+After updating, run a new refund-focused diagnostic on the same model:
+
+```powershell
+$env:RAFEEQ_MODEL = "google/gemini-2.5-flash"
+py -m uv run python -m rafeeq.evaluate live --task-ids refund-finance-gate duplicate-refund-ar --requests-per-minute 10
+```
+
+Then run a new full A/B experiment. Do not resume the completed baseline with changed source or replace
+its 24/26 results with scores from scripted regression tests.

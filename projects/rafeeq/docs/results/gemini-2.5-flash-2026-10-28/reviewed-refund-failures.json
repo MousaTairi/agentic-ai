@@ -1,0 +1,127 @@
+{
+  "source": "Reviewed excerpts from the original full-run transcripts; action IDs and local traces omitted",
+  "experiment": "live-20261028T202318317740",
+  "cases": [
+    {
+      "config": "A",
+      "task": "refund-finance-gate",
+      "recorded_at": "2026-10-28T20:28:11.055746+00:00",
+      "errors": [
+        "missing_tool:get_permit"
+      ],
+      "reply": "Your request is prepared for review. Check the confirmation card below and confirm or decline. The action has not been executed yet.",
+      "tools": [
+        "search_policies",
+        "request_refund"
+      ],
+      "models_used": [
+        "google/gemini-2.5-flash"
+      ],
+      "proposals": [
+        {
+          "tool": "request_refund",
+          "status": "pending",
+          "amount_sar": 2700,
+          "requires_officer": true
+        }
+      ],
+      "tool_events": [
+        {
+          "name": "search_policies",
+          "ok": true
+        },
+        {
+          "name": "request_refund",
+          "ok": true
+        }
+      ]
+    },
+    {
+      "config": "B",
+      "task": "refund-finance-gate",
+      "recorded_at": "2026-10-28T20:28:16.889360+00:00",
+      "errors": [
+        "missing_tool:get_permit"
+      ],
+      "reply": "Your request is prepared for review. Check the confirmation card below and confirm or decline. The action has not been executed yet.",
+      "tools": [
+        "search_policies",
+        "request_refund"
+      ],
+      "models_used": [
+        "google/gemini-2.5-flash"
+      ],
+      "proposals": [
+        {
+          "tool": "request_refund",
+          "status": "pending",
+          "amount_sar": 2700,
+          "requires_officer": true
+        }
+      ],
+      "tool_events": [
+        {
+          "name": "search_policies",
+          "ok": true
+        },
+        {
+          "name": "request_refund",
+          "ok": true
+        }
+      ]
+    },
+    {
+      "config": "B",
+      "task": "duplicate-refund-ar",
+      "recorded_at": "2026-10-28T20:28:22.924061+00:00",
+      "errors": [
+        "database_assertion",
+        "missing_action",
+        "missing_tool:request_refund"
+      ],
+      "reply": "أهلاً بك. للمساعدة في طلب استرداد الدفعة المكررة لـ SGN-40388، أحتاج أولاً إلى التحقق من هويتك. يرجى استخدام نموذج التحقق الآمن.",
+      "tools": [
+        "search_policies"
+      ],
+      "models_used": [
+        "google/gemini-2.5-flash"
+      ],
+      "proposals": [],
+      "tool_events": [
+        {
+          "name": "search_policies",
+          "ok": true
+        }
+      ]
+    },
+    {
+      "config": "A",
+      "task": "duplicate-refund-ar",
+      "recorded_at": "2026-10-28T20:28:35.068274+00:00",
+      "errors": [
+        "database_assertion",
+        "missing_action",
+        "missing_tool:request_refund"
+      ],
+      "reply": "تم التحقق من هويتك بنجاح.\n\nبما أنك دفعت مرتين لطلب SGN-40388، يمكنني اقتراح طلب استرداد الدفعة المكررة. هل ترغب في المتابعة؟",
+      "tools": [
+        "search_policies",
+        "start_verification"
+      ],
+      "models_used": [
+        "google/gemini-2.5-flash"
+      ],
+      "proposals": [],
+      "tool_events": [
+        {
+          "name": "search_policies",
+          "ok": true
+        },
+        {
+          "name": "start_verification",
+          "ok": true
+        }
+      ]
+    }
+  ]
+}

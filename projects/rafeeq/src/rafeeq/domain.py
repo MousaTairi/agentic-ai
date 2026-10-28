@@ -88,6 +88,16 @@ def permit_info(store: Store, sid: str, permit_id: str) -> dict:
     if p["status"] == "needs_info":
         out.update(info_requested=p["info_requested"],
                    info_deadline=(date.fromisoformat(p["needs_info_since"]) + timedelta(days=14)).isoformat())
+    # Expose eligible refund options, not payment identifiers or account details.
+    out["refund_options"] = []
+    with store.connect() as db:
+        for reason in ("duplicate_payment", "rejected"):
+            try:
+                amount = refund_amount(db, {"permit_id": permit_id, "reason": reason})
+            except ValueError:
+                continue
+            out["refund_options"].append({"reason": reason, "amount_sar": amount,
+                                          "requires_officer": amount > 1000, "policy_id": "POL-06"})
     return out
 
 

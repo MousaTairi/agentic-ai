@@ -27,6 +27,10 @@ def supported(message: str, has_context: bool) -> bool:
 
 
 def intent(message: str) -> str:
+    if (not re.search(r"^\s*(?:what\b|how\b|when\b|can\b|could\b|ما\s|هل\s|متى\s|كيف\s)", message, re.I)
+            and re.search(r"\bI (?:want|need|would like)[^?.!]*refund|\b(?:propose|prepare|request)[^?.!]*refund|"
+                          r"(?:أريد|اريد|أود|اود|اقترح|جهّ?ز|قدّ?م)[^؟.!]*(?:استرداد|استرجاع)", message, re.I)):
+        return "refund"
     if re.search(r"register|sign.up|create.*account|تسجيل|سجلني|إنشاء حساب|انشاء حساب", message, re.I):
         return "register"
     if (re.search(r"status|deadline|حالة|موعد.*اعتراض", message, re.I)

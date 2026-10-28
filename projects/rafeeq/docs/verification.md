@@ -1,7 +1,7 @@
 # Tests and results
 
-The latest Linux validation on 28 October 2026 passed **80 pytest cases** and Ruff with Python 3.12.14.
-The Windows run passed the same 80 tests with Python 3.13.7 in 85.93 seconds, plus Ruff, the offline
+The latest Linux validation on 28 October 2026 passed **94 pytest cases** and Ruff with Python 3.12.14.
+The earlier Windows run passed 80 tests with Python 3.13.7 in 85.93 seconds, plus Ruff, the offline
 attack test, and retrieval checks. The complete Gemini live run finished with 24/26 passes on each configuration.
 
 ## Automated checks
@@ -87,8 +87,10 @@ Both failed `refund-finance-gate` (`missing_tool:get_permit`) and `duplicate-ref
 (`missing_tool:request_refund`, `missing_action`, `database_assertion`). The full run has one trial,
 23 paired model-task cases, and three deterministic scope tasks per configuration. Neither configuration
 has a task-success advantage in this run. The [result records and analysis](results/gemini-2.5-flash-2026-10-28/README.md)
-are based on terminal output; original manifests, detailed CSV metrics, and transcripts have not yet
-been reviewed. No refund root cause or subsequent live fix is claimed.
+were initially based on terminal output. The original transcripts have now been reviewed and match all
+52 outcomes/error lists. They confirm the skipped record lookup and redundant verification/permission
+questions in the refund cases. Original manifests and detailed CSV metrics remain unreviewed. The
+fixes have local regression coverage; their live-model performance has not yet been measured.
 
 The updated runner alternates A/B order, paces requests, and saves progress after each outcome.
 `analysis.md` reports coverage and grader categories without raw prompts or replies. It is a starting
@@ -105,7 +107,7 @@ See the [security note](security.md).
 
 ## Next checks
 
-- Review the four failed refund task/configuration transcripts, then test justified fixes in a new experiment.
+- Run a new refund-focused live diagnostic, then a new full experiment for the regression-tested fixes.
 - Inspect Arabic fluency, citations, tool behavior, privacy, and confirmation states in the real responses.
 - Review the passed live privacy/approval attack transcripts and add a retrieved-document injection experiment.
 - Check the remote CI runs; the local Windows full-suite result is recorded above.
@@ -118,3 +120,15 @@ rate-limit stopping, account errors that must not switch models, and the two-att
 evaluation test verifies that the backup is disabled. A separate real-MCP regression checks that a
 connection failure produces the specific diagnostic message rather than blaming the API key.
 These tests exercise routing logic, not the availability or quality of a live backup model.
+
+## Refund regression update
+
+The original Gemini transcripts match the recorded 24/26 results on both configurations. Refund
+handling now reads the authorized record first and supplies eligible reasons/amounts without payment
+identifiers. If the model gives an explanation instead of acting on an explicit eligible refund request,
+the backend prepares a pending proposal through the existing validated path. Policy questions and
+unverified, expired, different-reference or ineligible requests do not receive fallback proposals.
+
+The Linux suite passed 94 tests after this change, including A/B regressions for both refund cases,
+confirmation/database checks, the finance gate and negative authorization cases. The graders and
+baseline scores are unchanged. A new live-model refund diagnostic and full run are still required.

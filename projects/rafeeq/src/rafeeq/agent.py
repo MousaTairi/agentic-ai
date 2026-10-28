@@ -219,7 +219,7 @@ async def run_agent(store: Store, sid: str, message: str, settings: Settings, mo
     authorized_info = None
     required_ui = ("start_registration" if task in ("apply", "register") and not session["citizen_id"]
                    else "start_application" if task in ("apply", "register")
-                   else "start_verification" if task == "book" and session["verified_until"] < time.time()
+                   else "start_verification" if task in ("book", "refund") and session["verified_until"] < time.time()
                    else None)
     final, stopped = "", "steps"
     failure_code = None
@@ -242,8 +242,12 @@ async def run_agent(store: Store, sid: str, message: str, settings: Settings, mo
             # Supply authorized record facts upfront for explicit status/deadline queries.
             refs = re.findall(r"(?:BLD|REN|SGN|FTR|EVT)[-‑–]\d{5}", message, re.I)
             requested = Permit.canonical_reference(refs[0]) if refs else None
+            if task == "refund" and not requested:
+                requested = session["verified"]
+            if task == "refund" and requested and requested != session["verified"]:
+                required_ui = "start_verification"
             if (requested and requested == session["verified"] and session["verified_until"] > time.time()
-                    and re.search(r"status|deadline|حالة|موعد.*اعتراض", message, re.I)):
+                    and (task == "refund" or re.search(r"status|deadline|حالة|موعد.*اعتراض", message, re.I))):
                 info = await dispatch("get_permit", json.dumps({"permit_id": requested}), store, sid, mcp, settings.configuration)
                 if info.get("ok"):
                     authorized_info = info["data"]
@@ -255,6 +259,11 @@ async def run_agent(store: Store, sid: str, message: str, settings: Settings, mo
                      "function": {"name": "get_permit", "arguments": json.dumps({"permit_id": requested})}}]},
                     {"role": "tool", "tool_call_id": record_id, "content": json.dumps(info, ensure_ascii=False)},
                 ])
+            if task == "refund" and authorized_info is not None:
+                messages.append({"role": "system", "content": "The citizen requested a refund proposal. "
+                    "Use the authorized record's refund_options and request_refund. Verification is current "
+                    "for this reference. Do not ask for permission to prepare a proposal; the confirmation "
+                    "card is the separate consent to execute it. Never invent eligibility or amounts."})
             # FTR has a fixed public fee; compute it even if a weak model would quote memory instead.
             if re.search(r"fee|cost|رسوم|تكلف", message, re.I) and re.search(r"\bFTR\b|food.?truck|عربة.*طعام|عربات.*طعام", message, re.I):
                 computed = await dispatch("compute_fee", '{"permit_type":"FTR"}', store, sid, mcp, settings.configuration)
@@ -267,7 +276,8 @@ async def run_agent(store: Store, sid: str, message: str, settings: Settings, mo
                     {"role": "tool", "tool_call_id": quote_id, "content": json.dumps(computed)},
                 ])
             if required_ui:
-                opened = await dispatch(required_ui, "{}", store, sid, mcp, settings.configuration)
+                ui_args = {"permit_id": requested} if required_ui == "start_verification" and requested else {}
+                opened = await dispatch(required_ui, json.dumps(ui_args), store, sid, mcp, settings.configuration)
                 if opened.get("ui_request"):
                     ui_requests.append(opened["ui_request"])
                 called.append(required_ui)
@@ -309,6 +319,24 @@ async def run_agent(store: Store, sid: str, message: str, settings: Settings, mo
                         messages.append({"role": "user", "content": "Please help complete the booking, not just explain it. Read my verified application, list available slots (defaults are allowed), then propose a suitable slot for confirmation. If not eligible, explain the exact status and next human review step."})
                         continue
                     final = redact(msg.get("content") or "")
+                    if task == "refund" and authorized_info is not None:
+                        # Prepare only an explicitly requested, eligible proposal; never confirm it.
+                        reason = ("duplicate_payment" if re.search(
+                            r"duplicat|paid twice|مكرر|مكررة|مرتين", message, re.I)
+                            else "rejected" if re.search(r"reject|مرفوض|رفض", message, re.I) else None)
+                        if reason and any(option["reason"] == reason for option in authorized_info["refund_options"]):
+                            result = await dispatch("request_refund", json.dumps({
+                                "permit_id": requested, "reason": reason}), store, sid, mcp, settings.configuration)
+                            if "request_refund" not in called:
+                                called.append("request_refund")
+                            event = {"name": "request_refund", "ok": result.get("ok", False),
+                                     "source": "explicit_request_fallback"}
+                            if not result.get("ok"):
+                                event["error"] = result.get("error")
+                            tool_events.append(event)
+                            store.event(trace, "tool", **event)
+                            if result.get("ok"):
+                                final = "Prepared for confirmation."
                     if task == "book" and not required_ui and not any(e["ok"] and e["name"] in ("book_inspection", "reschedule_inspection") for e in tool_events):
                         # Provide a next action even when a weak model stops after an explanation.
                         try:

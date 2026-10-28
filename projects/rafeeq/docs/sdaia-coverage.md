@@ -13,7 +13,7 @@ to the implementation. The [README](../README.md) explains the project itself.
 | Human approval for a write | Stored application, booking, rescheduling, and refund proposals; explicit citizen confirmation | Ownership, expiry, idempotence, and database effects tested |
 | Step and cost budgets | Eight model steps, four tool calls per response, estimated provider-cost reservation | Tested; pricing assumptions still depend on the selected model |
 | 15+ tasks on two configurations | 26 automatically graded live-agent tasks; A uses word retrieval, B adds character n-grams | Complete Gemini run: 24/26 on A and B, zero blocks/unrun; one trial per task |
-| Error analysis | Retrieval misses and first live-run analysis, including grading defects and actual workflow failures | Baseline and complete Gemini results in `docs/results/`; detailed refund transcript review still needed |
+| Error analysis | Retrieval misses and first live-run analysis, including grading defects and actual workflow failures | Baseline and complete Gemini results in `docs/results/`; refund transcripts reviewed and fixes tested locally; post-fix live results pending |
 | Security note with an attack and defence | Trifecta analysis, private-record scope, separate roles, immutable proposals, and offline attack simulation | Offline defence and both live user-message attack tasks pass; retrieved-document injection testing is pending |
 
 ## Assessment areas

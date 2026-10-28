@@ -219,7 +219,7 @@ py -m uv run python -m rafeeq.evaluate retrieval
 
 On Linux/macOS, use `uv run` in place of `py -m uv run`.
 
-The latest Linux check passed **80 tests** and Ruff. The Windows run also passed **80 tests**
+The latest Linux check passed **94 tests** and Ruff. The Windows run also passed **80 tests**
 with Python 3.13.7, plus Ruff, the offline security check, and the same retrieval benchmark. Tests cover real MCP/database workflows,
 registration, confirmations, privacy, budgets, and evaluation checkpoints. The offline security test
 blocks unauthorized record access and an unavailable email tool. [Verification notes](docs/verification.md)
@@ -251,7 +251,9 @@ Three passes per configuration are scope refusals without model calls. This was 
 so it does not establish repeated-run reliability or an A/B winner.
 
 [Results and refund failure analysis](docs/results/gemini-2.5-flash-2026-10-28/README.md) include a
-terminal-derived per-task CSV and summary. Full transcript review is still pending.
+terminal-derived per-task CSV and summary. The refund transcripts confirmed a skipped record lookup
+and redundant verification/permission questions. Those paths now have local regression fixes; a new
+live run is needed to measure them. The recorded baseline remains 24/26 on both configurations.
 
 An earlier Nemotron run was quota-blocked: A passed 8/26 and B 3/26, with 30 provider blocks.
 Six A failures were citation-format grader errors; regrading the old answers changes A to 14/26.
@@ -305,8 +307,7 @@ or staff SSO. The last-four-digits/mobile check is a simulation. Appeals are gui
 Withdrawn-application refunds go to a finance officer because the sample records do not prove the
 withdrawal stage. Later-stage repeat inspections also need officer handling.
 
-The next work is transcript review of the two refund failures, targeted fixes, and a new live run
-to measure those changes. The existing user-message privacy/approval attacks passed on both configurations.
+The next work is a refund-focused live diagnostic and a new full A/B run to measure the fixes. The existing user-message privacy/approval attacks passed on both configurations.
 A full accessibility audit and a retrieved-document injection experiment are also pending. Real deployment
 would need stronger identity, account/IP rate limits, retention controls, and operational monitoring.
 
