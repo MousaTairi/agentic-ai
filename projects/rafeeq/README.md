@@ -318,7 +318,7 @@ would need stronger identity, account/IP rate limits, retention controls, and op
 
 ## Course background and credits
 
-I built Rafeeq as my graduation project for SDAIA Academy's **Agentic AI Systems Engineering** course,
+I built Rafeeq as my accomplishment project for the **Agentic-AI** course at SDAIA Academy,
 following the “Rafeeq in production” track.
 
 - [Course repository](https://github.com/SDAIAAcademy/agentic-ai)

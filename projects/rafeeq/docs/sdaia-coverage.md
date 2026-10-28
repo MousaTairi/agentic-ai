@@ -1,6 +1,6 @@
 # Course requirements
 
-I built Rafeeq for SDAIA Academy's [Agentic AI Systems Engineering course](https://github.com/SDAIAAcademy/agentic-ai),
+I built Rafeeq as my accomplishment project for SDAIA Academy's [Agentic-AI course](https://github.com/SDAIAAcademy/agentic-ai),
 using the “Rafeeq in production” track. This page maps the [course requirements](https://github.com/SDAIAAcademy/agentic-ai/tree/main/labs/capstone)
 to the implementation. The [README](../README.md) explains the project itself.
 
