@@ -1,0 +1,29 @@
+{
+  "A": {
+    "runs": 26,
+    "planned_runs": 26,
+    "passed": 26,
+    "failed_agent": 0,
+    "blocked_provider": 0,
+    "unrun": 0,
+    "overall_pass_rate": 1.0,
+    "available_run_pass_rate": 1.0,
+    "failures": {}
+  },
+  "B": {
+    "runs": 26,
+    "planned_runs": 26,
+    "passed": 26,
+    "failed_agent": 0,
+    "blocked_provider": 0,
+    "unrun": 0,
+    "overall_pass_rate": 1.0,
+    "available_run_pass_rate": 1.0,
+    "failures": {}
+  },
+  "comparison": {
+    "complete": true,
+    "paired_model_task_runs": 23,
+    "note": "Provider blocks and unrun tasks are not model-quality failures. Scope-only passes do not measure LLM quality."
+  }
+}

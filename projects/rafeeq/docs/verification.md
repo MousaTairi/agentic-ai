@@ -2,7 +2,9 @@
 
 The latest Linux validation on 28 October 2026 passed **94 pytest cases** and Ruff with Python 3.12.14.
 The earlier Windows run passed 80 tests with Python 3.13.7 in 85.93 seconds, plus Ruff, the offline
-attack test, and retrieval checks. The complete Gemini live run finished with 24/26 passes on each configuration.
+attack test, and retrieval checks. The latest post-fix Gemini live run finished with 26/26 passes on each configuration.
+The original summary, CSV, and all 52 transcript records were cross-checked;
+[final results](results/gemini-2.5-flash-2026-10-29/README.md) include manual-review limitations.
 
 ## Automated checks
 
@@ -90,7 +92,8 @@ has a task-success advantage in this run. The [result records and analysis](resu
 were initially based on terminal output. The original transcripts have now been reviewed and match all
 52 outcomes/error lists. They confirm the skipped record lookup and redundant verification/permission
 questions in the refund cases. Original manifests and detailed CSV metrics remain unreviewed. The
-fixes have local regression coverage; their live-model performance has not yet been measured.
+fixes passed the later refund diagnostic and full live run. The earlier 24/26 table is the preserved
+baseline; the final post-fix score is 26/26 on A and B.
 
 The updated runner alternates A/B order, paces requests, and saves progress after each outcome.
 `analysis.md` reports coverage and grader categories without raw prompts or replies. It is a starting
@@ -107,7 +110,7 @@ See the [security note](security.md).
 
 ## Next checks
 
-- Run a new refund-focused live diagnostic, then a new full experiment for the regression-tested fixes.
+- Repeat the completed live experiment for reliability estimates and add held-out tasks.
 - Inspect Arabic fluency, citations, tool behavior, privacy, and confirmation states in the real responses.
 - Review the passed live privacy/approval attack transcripts and add a retrieved-document injection experiment.
 - Check the remote CI runs; the local Windows full-suite result is recorded above.
@@ -131,4 +134,24 @@ unverified, expired, different-reference or ineligible requests do not receive f
 
 The Linux suite passed 94 tests after this change, including A/B regressions for both refund cases,
 confirmation/database checks, the finance gate and negative authorization cases. The graders and
-baseline scores are unchanged. A new live-model refund diagnostic and full run are still required.
+baseline scores are unchanged. The subsequent live refund diagnostic passed 2/2 on A and B, and the
+new full live run passed 26/26 on A and B. Both duplicate-refund cases used the recorded proposal fallback.
+
+## Final post-fix live run
+
+The supplied original summary, task CSV, and 52 transcripts agree on 26/26 passes for both A and B,
+zero provider blocks and zero unrun cases. All model-dependent cases list only `google/gemini-2.5-flash`;
+three scope tasks on each side use no model call. The transcript window is 29 October 2026,
+00:02:25–00:08:50 Asia/Riyadh (28 October, 21:02:25–21:08:50 UTC).
+
+The finance cases read the authorized record before preparing the 2,700 SAR pending proposal. Both
+Arabic duplicate-payment cases used the explicit-request fallback and prepared a 500 SAR proposal.
+The runner's confirmation/state/database assertions passed. This is harness-level task success,
+including backend checks and evaluator-simulated human confirmations, not model-only performance.
+
+Manual review identified language drift on B's English registration task, off-target replies for a
+different unauthorized permit, and imprecise email capability wording in privacy-attack responses.
+Those limitations are not covered by the passing graders. The [final report](results/gemini-2.5-flash-2026-10-29/README.md)
+contains original aggregate artifacts, selected reviewed excerpts, and scope limits. The experiment
+manifest and original temporary databases were not supplied. No new inference was run while publishing
+these artifacts, and no raw transcripts or secrets were committed.

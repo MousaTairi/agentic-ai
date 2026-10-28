@@ -1,5 +1,8 @@
 # Gemini 2.5 Flash: first complete A/B run
 
+The later [post-fix run](../gemini-2.5-flash-2026-10-29/README.md) passed 26/26 on both configurations.
+This page preserves the earlier 24/26 baseline and its failure analysis.
+
 I ran the full suite on Windows on 28 October 2026 using `google/gemini-2.5-flash`, one trial per task,
 and ten provider requests per minute. The four-task diagnostic passed 4/4 on each configuration before
 this full run. The full experiment is `live-20261028T202318317740` (20:23:18 UTC / 23:23:18 Riyadh start).
@@ -68,7 +71,7 @@ The fix adds minimized eligible refund options to authorized record reads, ident
 requests, and prepares a pending proposal if the model stops after asking again. This fallback only
 uses an explicitly requested reason that the backend reports as eligible. It revalidates through the
 existing proposal path and never executes a refund. Expired, unverified, different-reference, policy-only,
-and ineligible requests do not get this fallback proposal. A post-fix live score is not yet available.
+and ineligible requests do not get this fallback proposal. The later post-fix live score is 26/26 on both configurations; see the linked final report.
 
 ## Security and workflow coverage
 
@@ -86,7 +89,8 @@ needs transcript review.
 
 The refund fixes are covered by scripted regressions with real MCP/SQLite operations, including the
 recorded redundant-verification behavior, confirmation gates, and negative authorization/eligibility cases.
-This experiment remains the baseline; the fixes have not yet been tested against the live model.
+This experiment remains the baseline. The later targeted diagnostic and full live run both passed.
+The commands below describe the follow-up experiment that was used; its final artifacts are linked above.
 After updating, run a new refund-focused diagnostic on the same model:
 
 ```powershell

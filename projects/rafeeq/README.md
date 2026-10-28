@@ -237,23 +237,27 @@ The retrieval benchmark uses 20 bilingual queries:
 B finds more of the expected policies in this small benchmark. Both still miss the Arabic building-document
 query. These results measure retrieval, not the full agent.
 
-My first complete Gemini 2.5 Flash evaluation ran all 26 tasks on each configuration:
+The latest full Gemini 2.5 Flash run passed all 26 tasks on each configuration after the refund fixes:
 
 | Configuration | Passed | Agent failures | Provider blocks | Unrun |
 |---|---:|---:|---:|---:|
-| A | 24/26 (92.3%) | 2 | 0 | 0 |
-| B | 24/26 (92.3%) | 2 | 0 | 0 |
+| A | 26/26 (100%) | 0 | 0 | 0 |
+| B | 26/26 (100%) | 0 | 0 | 0 |
 
-Both failed the same refund tasks: `refund-finance-gate` omitted the required `get_permit` call;
-`duplicate-refund-ar` produced no refund proposal or expected database record. All other tasks passed,
-including inspection confirmations, privacy checks, registration, and the two user-message attack cases.
-Three passes per configuration are scope refusals without model calls. This was one trial per task,
-so it does not establish repeated-run reliability or an A/B winner.
+The [final results and analysis](docs/results/gemini-2.5-flash-2026-10-29/README.md) include the original
+summary and CSV, checked against all 52 transcript records. Three tasks per configuration are scope
+refusals without model calls; the other 23 paired cases also passed. This is one trial, with no
+measured A/B task-success advantage.
 
-[Results and refund failure analysis](docs/results/gemini-2.5-flash-2026-10-28/README.md) include a
-terminal-derived per-task CSV and summary. The refund transcripts confirmed a skipped record lookup
-and redundant verification/permission questions. Those paths now have local regression fixes; a new
-live run is needed to measure them. The recorded baseline remains 24/26 on both configurations.
+The [earlier Gemini baseline](docs/results/gemini-2.5-flash-2026-10-28/README.md) scored 24/26 on both
+sides. The two refund failures are now resolved for the tested cases. Both Arabic duplicate-refund
+cases used the backend's eligible-proposal fallback, while confirmation and finance approval remained
+separate. The baseline and its error analysis are preserved.
+
+Manual review still found an Arabic reply to one English registration request and an unhelpful reply
+when a different, unauthorized permit was requested. Neither was caught by the automatic graders.
+The privacy attack replies also overstate possible email capabilities; Rafeeq has no email tool.
+These limitations are documented alongside the 100% automated score.
 
 An earlier Nemotron run was quota-blocked: A passed 8/26 and B 3/26, with 30 provider blocks.
 Six A failures were citation-format grader errors; regrading the old answers changes A to 14/26.
@@ -307,8 +311,9 @@ or staff SSO. The last-four-digits/mobile check is a simulation. Appeals are gui
 Withdrawn-application refunds go to a finance officer because the sample records do not prove the
 withdrawal stage. Later-stage repeat inspections also need officer handling.
 
-The next work is a refund-focused live diagnostic and a new full A/B run to measure the fixes. The existing user-message privacy/approval attacks passed on both configurations.
-A full accessibility audit and a retrieved-document injection experiment are also pending. Real deployment
+The final live suite and user-message privacy/approval attacks passed on both configurations.
+Further work includes repeated trials, language-matching checks, better different-reference replies,
+clearer capability wording, a full accessibility audit, and a retrieved-document injection experiment. Real deployment
 would need stronger identity, account/IP rate limits, retention controls, and operational monitoring.
 
 ## Course background and credits

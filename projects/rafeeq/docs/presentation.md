@@ -8,7 +8,8 @@ The other documents go into more detail:
 - [Architecture](architecture.md): model calls, MCP, data flow, SQLite state, and approval transitions.
 - [Security](security.md): private-data access, prompt injection, confirmations, and deployment risks.
 - [Tests and results](verification.md): checks that have run, retrieval scores, and remaining validation.
-- [Gemini A/B results](results/gemini-2.5-flash-2026-10-28/README.md): complete run, per-task outcomes, and refund failures.
+- [Final Gemini A/B results](results/gemini-2.5-flash-2026-10-29/README.md): 26/26 on each configuration, original aggregate files, and manual-review findings.
+- [Earlier Gemini baseline](results/gemini-2.5-flash-2026-10-28/README.md): 24/26, refund failures, and fixes.
 - [Earlier Nemotron evaluation](results/first-live-run-review.md): quota blocks, grader errors, and workflow failures.
 - [Course requirements](sdaia-coverage.md): how the project relates to the SDAIA course.
 
