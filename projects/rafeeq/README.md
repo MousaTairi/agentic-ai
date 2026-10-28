@@ -27,6 +27,10 @@ The application loads this project's `.env` automatically; already exported vari
 Never commit `.env`, paste keys into chat, or put keys into HTML. `.env.example` explains each supported setting.
 Free-provider model names, availability and quotas change; verify them in your OpenRouter dashboard.
 
+**Windows:** bilingual files and MCP communication explicitly use UTF-8. The `tzdata` dependency supplies the
+Riyadh timezone when no system timezone database exists. If an older version shows a `'charmap' codec` error,
+update the project, run `python -m uv sync --frozen`, and restart the server. Preserve your existing `.env`.
+
 For the finance-officer demo, generate a separate random token locally, place it in `RAFEEQ_OFFICER_TOKEN`,
 restart the server, and enter it in the footer's officer panel. It is not the AI provider key.
 This panel demonstrates a separate role; a shared token is not production staff authentication.

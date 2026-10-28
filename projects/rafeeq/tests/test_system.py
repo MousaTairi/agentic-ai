@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
@@ -9,7 +10,7 @@ from pydantic import ValidationError
 
 from rafeeq.agent import bridge, dispatch, run_agent
 from rafeeq.api import create_app
-from rafeeq.config import Settings
+from rafeeq.config import PROJECT, Settings
 from rafeeq.domain import decide, fee, permit_info, propose, verify
 from rafeeq.schemas import Fee, Verify
 from rafeeq.storage import Store
@@ -263,3 +264,46 @@ def test_pending_finance_proposal_is_not_duplicated(store):
     repeated = propose(store, sid, "request_refund", args)
     assert repeated["action_id"] == original["action_id"]
     assert repeated["status"] == "awaiting_officer"
+
+
+async def test_arabic_prompt_and_retrieval_with_windows_default_encoding(store, monkeypatch):
+    from rafeeq.retrieval import documents, index, search
+
+    original = Path.read_text
+    # Reproduce the reported Windows failure on a machine whose locale is UTF-8.
+    with pytest.raises(UnicodeDecodeError):
+        original(PROJECT / "AGENTS.md", encoding="cp1252")
+
+    def windows_read_text(path, encoding=None, errors=None):
+        return original(path, encoding=encoding or "cp1252", errors=errors)
+
+    monkeypatch.setattr(Path, "read_text", windows_read_text)
+    documents.cache_clear()
+    index.cache_clear()
+    try:
+        assert len(documents()) == 10
+        assert search("رسوم البناء")["data"]
+        model = ScriptedModel([
+            tool("search_policies", {"query": "المستندات المطلوبة لرخصة البناء"}),
+            answer("تحتاج إلى صك الملكية والمخططات الهندسية (POL-01)."),
+        ])
+        result = await run_agent(store, store.new_session(), "كيف أحصل على تصريح البناء؟",
+                                 Settings(runtime=store.runtime, max_cost=10), model)
+        assert result.stopped == "completed"
+        assert "صك الملكية" in result.reply
+        assert result.tools == ["search_policies"]
+    finally:
+        documents.cache_clear()
+        index.cache_clear()
+
+
+def test_riyadh_timezone_without_os_timezone_database():
+    import zoneinfo
+
+    previous = zoneinfo.TZPATH
+    try:
+        zoneinfo.reset_tzpath(())
+        timezone = zoneinfo.ZoneInfo.no_cache("Asia/Riyadh")
+        assert timezone.key == "Asia/Riyadh"
+    finally:
+        zoneinfo.reset_tzpath(previous)

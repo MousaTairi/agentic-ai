@@ -17,7 +17,7 @@ def normalize(text: str) -> str:
 def documents() -> tuple[dict, ...]:
     docs = []
     for path in sorted((COURSE / "labs/data/policies").glob("*.md")):
-        raw = path.read_text()
+        raw = path.read_text(encoding="utf-8")
         head, body = raw[3:].split("---", 1)
         meta = dict(line.split(": ", 1) for line in head.strip().splitlines())
         # Entire bilingual policies fit within a bounded result; preserve exact source citations.

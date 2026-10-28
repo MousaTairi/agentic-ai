@@ -12,7 +12,7 @@ from .retrieval import search
 from .schemas import Fee
 from .storage import Store
 
-server = FastMCP("Madar municipal read tools")
+server = FastMCP("Rafeeq municipal read tools")
 
 
 @server.tool()

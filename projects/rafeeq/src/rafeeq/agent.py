@@ -70,6 +70,9 @@ async def bridge(settings: Settings) -> AsyncIterator[ClientSession]:
     env.pop("OPENROUTER_API_KEY", None)
     env.pop("RAFEEQ_OFFICER_TOKEN", None)
     env["RAFEEQ_NO_DOTENV"] = "1"
+    # Windows uses a legacy locale by default; MCP exchanges bilingual Unicode text.
+    env["PYTHONUTF8"] = "1"
+    env["PYTHONIOENCODING"] = "utf-8"
     params = StdioServerParameters(command=sys.executable, args=["-m", "rafeeq.mcp_server"], env=env)
     async with stdio_client(params) as (read, write):
         async with ClientSession(read, write) as session:
@@ -120,7 +123,7 @@ async def run_agent(store: Store, sid: str, message: str, settings: Settings, mo
     session = store.session(sid)
     history = compact(json.loads(session["history"]), settings.max_history_messages)
     # Private application facts stay in the database and are re-read after authorization each turn.
-    system = (PROJECT / "AGENTS.md").read_text()
+    system = (PROJECT / "AGENTS.md").read_text(encoding="utf-8")
     system += "\nActual date: " + datetime.now(ZoneInfo("Asia/Riyadh")).date().isoformat()
     system += ". Municipal calculations use the explicitly labelled simulation clock."
     messages = [{"role": "system", "content": system}, *history, {"role": "user", "content": redact(message)}]

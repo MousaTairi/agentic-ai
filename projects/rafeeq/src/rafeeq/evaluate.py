@@ -90,16 +90,16 @@ async def live(tasks: list[dict], output: Path, trials: int) -> int:
                                     "reply": reply.model_dump(), "errors": errors})
                     print(config, trial, task["id"], "PASS" if not errors else errors, flush=True)
     output.mkdir(parents=True, exist_ok=False)
-    with (output / "agent-results.csv").open("w") as handle:
+    with (output / "agent-results.csv").open("w", encoding="utf-8", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=list(rows[0]))
         writer.writeheader()
         writer.writerows(rows)
-    (output / "transcripts.json").write_text(json.dumps(details, ensure_ascii=False, indent=2))
+    (output / "transcripts.json").write_text(json.dumps(details, ensure_ascii=False, indent=2), encoding="utf-8")
     summary = {config: {"runs": len(selected := [r for r in rows if r["config"] == config]),
                        "passed": sum(r["passed"] for r in selected),
                        "failures": dict(Counter(e for r in selected for e in r["errors"].split("|") if e))}
                for config in ("A", "B")}
-    (output / "summary.json").write_text(json.dumps(summary, indent=2))
+    (output / "summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
     print(json.dumps(summary, indent=2))
     return int(any(not row["passed"] for row in rows))
 
@@ -114,7 +114,7 @@ def retrieval(tasks: list[dict], output: Path) -> int:
                          "top1": bool(ids and ids[0] == task["policy"]),
                          "top3": task["policy"] in ids, "retrieved": "|".join(ids)})
     output.mkdir(parents=True, exist_ok=False)
-    with (output / "retrieval.csv").open("w") as handle:
+    with (output / "retrieval.csv").open("w", encoding="utf-8", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=list(rows[0]))
         writer.writeheader()
         writer.writerows(rows)
@@ -136,7 +136,7 @@ def main() -> None:
     if args.trials < 1:
         parser.error("--trials must be positive")
     filename = "tasks.jsonl" if args.mode == "live" else "retrieval.jsonl"
-    tasks = [json.loads(line) for line in (PROJECT / "evals" / filename).read_text().splitlines() if line.strip()]
+    tasks = [json.loads(line) for line in (PROJECT / "evals" / filename).read_text(encoding="utf-8").splitlines() if line.strip()]
     output = args.output or PROJECT / "evals/results" / (args.mode + "-" + datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%f"))
     raise SystemExit(asyncio.run(live(tasks, output, args.trials)) if args.mode == "live" else retrieval(tasks, output))
 

@@ -6,10 +6,14 @@ not proof of publication, GitHub Actions execution, or restoration in a new clou
 ## Completed checks
 
 - Frozen dependency installation with `uv sync --frozen`; dependency versions recorded in `uv.lock`.
-- 28 pytest cases covering all five fee types, schema rejection, privacy boundaries, scoped/expiring identity,
+- 30 pytest cases covering all five fee types, schema rejection, privacy boundaries, scoped/expiring identity,
   approval ownership, immutable proposals, replay/idempotence, database persistence, rescheduling, separate finance
   approval, real MCP subprocess round trips, public follow-up context, cost/step/context/deadline controls,
   rate limits, missing-provider handling, and HTTP security boundaries.
+- Windows regression coverage reproduces the reported cp1252 decoding failure, then verifies explicit UTF-8
+  prompt/policy loading and an Arabic scripted-model turn through the real MCP subprocess. Timezone loading
+  is also tested without an OS timezone database. These checks ran on Linux with the Windows encoding emulated;
+  native Windows execution is covered by the new CI matrix, whose outcome has not been verified here.
 - Ruff checks and JavaScript syntax check (`node --check src/rafeeq/web/app.js`).
 - Redesigned interface checked in Chromium at desktop, 390px phone, 768px tablet and 1024px widths,
   including Arabic RTL, service prompt shortcuts, real form verification, clearing sensitive form fields,

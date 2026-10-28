@@ -18,7 +18,7 @@ from .storage import Store
 def create_app(settings: Settings | None = None, model: Model | None = None) -> FastAPI:
     settings = settings or Settings()
     store = Store(settings.runtime)
-    app = FastAPI(title="Rafeeq · Madar Municipal Services", version="0.1.0", docs_url=None, redoc_url=None)
+    app = FastAPI(title="Rafeeq · Municipal Services", version="0.1.0", docs_url=None, redoc_url=None)
     app.state.store = store
     # Serialize turns and writes in this single-worker educational service.
     lock = asyncio.Lock()
