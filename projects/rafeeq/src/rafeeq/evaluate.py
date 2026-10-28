@@ -111,6 +111,8 @@ def export_results(output: Path, attempts: list[dict], planned: int) -> dict:
 async def live(tasks: list[dict], output: Path, trials: int, *, resume: bool = False,
                requests_per_minute: float = 10, settings: Settings | None = None, provider=None) -> int:
     base = settings or Settings()
+    # Controlled A/B runs must never silently switch model identities.
+    base = base.model_copy(update={"fallback_model": ""})
     if not base.api_key and provider is None:
         print("BLOCKED: OPENROUTER_API_KEY is missing. No model evaluations were executed.")
         return 2

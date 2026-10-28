@@ -62,3 +62,16 @@ The browser renders a small Markdown subset into safe DOM nodes; arbitrary model
 
 Runtime data stays in `runtime/` across restarts. The server runs as a single worker; background
 processes need to be started again when moving to a new machine.
+
+## Model availability
+
+The primary model is fixed by `RAFEEQ_MODEL`. An optional `RAFEEQ_FALLBACK_MODEL` names one specific
+backup; no automatic router is accepted for that setting. Chat makes at most two HTTP attempts per
+model step. The backup is eligible on transport failures, 404/429, and 500/502/503/504 responses.
+Authentication, credit, and access errors stop without switching. Without a backup, only the existing
+502/503 retry remains. Requests require tool-compatible providers.
+
+Successful selected model IDs are included in turn usage and activity details. Safe connection,
+timeout, invalid-response, and HTTP error classifications are returned without raw provider bodies.
+A/B evaluation clears the backup setting so an availability fallback cannot change the experimental model.
+The cost estimate still reserves two attempts using the configured upper-bound prices for both models.

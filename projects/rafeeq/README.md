@@ -66,6 +66,24 @@ uv run uvicorn rafeeq.api:create_app --factory --host 127.0.0.1 --port 8000
 The frontend uses local HTML, CSS, and JavaScript, with no Node build step. Add `?preview=1` to explore
 the interface without a working provider connection. Chat and verification still need the backend.
 
+### Fixed model and optional backup
+
+`RAFEEQ_MODEL` selects a specific primary model. The default is
+`nvidia/nemotron-3.5-lightning:free`; Rafeeq does not select random models by default.
+For an optional backup, set `RAFEEQ_FALLBACK_MODEL` in `.env` to another specific OpenRouter model ID
+with tool-calling support, then restart the server. Leave it blank to keep a single model.
+Automatic router IDs such as `openrouter/free` are not accepted as backups.
+
+Chat can make one backup attempt if the primary has a connection/timeout failure, is unavailable,
+returns a rate limit, or has a server error. A key, credit, or access error stops immediately.
+There are at most two HTTP attempts per model step, covered by the cost reservation. Set the configured
+pricing bounds high enough for either model. A free backup may share the same account quota, so switching
+models cannot guarantee recovery from a daily limit.
+
+The activity panel shows successful model selections and error codes. Connection failures and timeouts
+have separate messages instead of asking for a new key. Live A/B evaluations disable the backup and
+keep the same primary model on both configurations.
+
 ### Updating an existing copy
 
 Keep your `.env` and `runtime/` directory. Reinstall dependencies with the frozen sync command after
@@ -193,7 +211,7 @@ py -m uv run python -m rafeeq.evaluate retrieval
 
 On Linux/macOS, use `uv run` in place of `py -m uv run`.
 
-The latest Linux check passed **65 tests** and Ruff. Tests cover real MCP/database workflows,
+The latest Linux check passed **80 tests** and Ruff. Tests cover real MCP/database workflows,
 registration, confirmations, privacy, budgets, and evaluation checkpoints. The offline security test
 blocks unauthorized record access and an unavailable email tool. [Verification notes](docs/verification.md)
 describe the browser checks and Windows coverage.

@@ -81,6 +81,7 @@ async def test_rate_limit_stops_and_checkpoint_resumes_without_repeating_complet
 
     async def blocked_agent(store, sid, prompt, settings, model):
         calls.append(settings.configuration)
+        assert settings.fallback_model == ""
         if len(calls) == 2:
             return Reply(reply="429", tools=[], actions=[], stopped="provider_error", error_code="rate_limit",
                          usage={}, trace_id="fixture")
@@ -88,7 +89,7 @@ async def test_rate_limit_stops_and_checkpoint_resumes_without_repeating_complet
 
     monkeypatch.setattr(evaluate, "run_agent", blocked_agent)
     output = tmp_path / "experiment"
-    settings = Settings(model="fixture-model", api_key="")
+    settings = Settings(model="fixture-model", api_key="", fallback_model="vendor/backup")
     assert await evaluate.live(tasks, output, 1, settings=settings, provider=object()) == 2
     before = json.loads((output / "checkpoint.json").read_text(encoding="utf-8"))
     assert len(before) == 2

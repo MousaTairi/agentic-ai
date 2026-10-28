@@ -1,6 +1,6 @@
 # Tests and results
 
-The latest Linux validation on 28 October 2026 passed **65 pytest cases** and Ruff with Python 3.12.14.
+The latest Linux validation on 28 October 2026 passed **80 pytest cases** and Ruff with Python 3.12.14.
 The offline attack test and retrieval benchmark also passed their checks. Live-model testing is still
 limited by provider quota.
 
@@ -99,3 +99,11 @@ See the [security note](security.md).
 - Run the live privacy/approval attacks and retain reviewed synthetic-only results.
 - Record a native Windows full-suite result and check the remote CI runs.
 - Complete a full accessibility audit; the existing browser checks cover only selected layouts and interactions.
+
+## Model routing checks
+
+Mock-provider regressions cover the fixed primary and explicit backup sequence, transport failures,
+rate-limit stopping, account errors that must not switch models, and the two-attempt cap. The controlled
+evaluation test verifies that the backup is disabled. A separate real-MCP regression checks that a
+connection failure produces the specific diagnostic message rather than blaming the API key.
+These tests exercise routing logic, not the availability or quality of a live backup model.

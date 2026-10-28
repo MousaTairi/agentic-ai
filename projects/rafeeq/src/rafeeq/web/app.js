@@ -83,6 +83,8 @@ function message(text, role, data) {
     details.append(element('summary', '', labels('View sources & activity', 'عرض المصادر والنشاط')));
     details.append(element('p', '', data.tools?.join(' → ') || labels('No tools used', 'لم تُستخدم أدوات')));
     details.append(element('p', '', (data.usage?.model_steps ?? 0) + ' steps · ' + data.stopped + ' · ' + data.trace_id));
+    if (data.error_code) details.append(element('p', '', labels('Error: ', 'الخطأ: ') + data.error_code));
+    if (data.usage?.models_used?.length) details.append(element('p', '', labels('Model: ', 'النموذج: ') + data.usage.models_used.join(' → ')));
     bubble.append(details);
   }
   article.append(bubble); $('messages').append(article); scrollMessages();

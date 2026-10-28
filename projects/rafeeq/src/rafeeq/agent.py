@@ -65,18 +65,30 @@ class OpenRouter:
     async def complete(self, messages: list[dict], settings: Settings) -> dict:
         if not settings.api_key:
             raise ProviderFailure("missing_key")
+        selected = settings.model
         async with httpx.AsyncClient(timeout=25) as client:
             for attempt in range(2):
                 delay = self.min_interval - (time.monotonic() - self.last_request)
                 if delay > 0:
                     await asyncio.sleep(delay)
                 self.last_request = time.monotonic()
-                response = await client.post("https://openrouter.ai/api/v1/chat/completions",
-                    headers={"Authorization": f"Bearer {settings.api_key}"},
-                    json={"model": settings.model, "messages": messages, "tools": TOOLS,
-                          "max_tokens": settings.max_tokens, "temperature": 0,
-                          "tool_choice": "auto",
-                          "provider": {"require_parameters": True}})
+                try:
+                    response = await client.post("https://openrouter.ai/api/v1/chat/completions",
+                        headers={"Authorization": f"Bearer {settings.api_key}"},
+                        json={"model": selected, "messages": messages, "tools": TOOLS,
+                              "max_tokens": settings.max_tokens, "temperature": 0,
+                              "tool_choice": "auto",
+                              "provider": {"require_parameters": True}})
+                except httpx.TransportError as exc:
+                    if attempt == 0 and settings.fallback_model and settings.fallback_model != selected:
+                        selected = settings.fallback_model
+                        continue
+                    code = "provider_timeout" if isinstance(exc, httpx.TimeoutException) else "provider_connection"
+                    raise ProviderFailure(code) from None
+                if (attempt == 0 and response.status_code in (404, 429, 500, 502, 503, 504)
+                        and settings.fallback_model and settings.fallback_model != selected):
+                    selected = settings.fallback_model
+                    continue
                 if response.status_code in (502, 503) and attempt == 0:
                     await asyncio.sleep(1)
                     continue
@@ -84,9 +96,15 @@ class OpenRouter:
                     # Do not log provider bodies; they can echo credentials or private input.
                     raise ProviderFailure({401: "invalid_key", 402: "credits", 403: "access_denied",
                                            404: "model_unavailable", 429: "rate_limit", 400: "model_parameters"}.get(response.status_code, "provider_unavailable"))
-                payload = response.json()
+                try:
+                    payload = response.json()
+                except ValueError:
+                    raise ProviderFailure("invalid_response") from None
+                if not isinstance(payload, dict):
+                    raise ProviderFailure("invalid_response")
                 if not payload.get("choices"):
                     raise ProviderFailure("invalid_response")
+                payload["rafeeq_selected_model"] = selected
                 return payload
         raise RuntimeError("AI provider unavailable.")
 
@@ -197,6 +215,7 @@ async def run_agent(store: Store, sid: str, message: str, settings: Settings, mo
     called: list[str] = []
     ui_requests: list[dict] = []
     tool_events: list[dict] = []
+    models_used: list[str] = []
     authorized_info = None
     required_ui = ("start_registration" if task in ("apply", "register") and not session["citizen_id"]
                    else "start_application" if task in ("apply", "register")
@@ -275,6 +294,9 @@ async def run_agent(store: Store, sid: str, message: str, settings: Settings, mo
                     failure_code = exc.code if isinstance(exc, ProviderFailure) else "provider_unavailable"
                     break
                 steps += 1
+                selected_model = response.get("rafeeq_selected_model", settings.model)
+                if selected_model not in models_used:
+                    models_used.append(selected_model)
                 finish_reason = response["choices"][0].get("finish_reason")
                 usage = response.get("usage", {})
                 used_in += usage.get("prompt_tokens", 0)
@@ -351,9 +373,13 @@ async def run_agent(store: Store, sid: str, message: str, settings: Settings, mo
         failure_code = "tool_unavailable"
     if not final:
         ar = bool(re.search(r"[\u0600-\u06ff]", message))
-        final = ("تعذر إكمال الطلب. تحقق من إعداد مفتاح الخدمة أو حاول مجددًا. لم يتم تنفيذ أي إجراء دون تأكيد."
-                 if ar else "I couldn't complete this turn. Check the server API key or retry. No action executes without confirmation.")
+        final = ("تعذر إكمال الطلب. راجع تفاصيل النشاط لمعرفة سبب التوقف. لم يُنفذ إجراء دون تأكيد."
+                 if ar else "I couldn't complete this turn. Check the activity details for the stop reason. No unconfirmed action was executed.")
         reasons = {
+            "provider_connection": ("Rafeeq could not connect to OpenRouter. Check the server's internet connection, proxy or firewall. No authentication error was received.", "تعذر الاتصال بـ OpenRouter. تحقق من اتصال الإنترنت أو إعدادات الوكيل والجدار الناري على الخادم. لم يصل رد يفيد بوجود خطأ في المفتاح."),
+            "provider_timeout": ("OpenRouter did not respond in time. Try again later. No authentication error was received.", "لم يستجب OpenRouter خلال المهلة المحددة. حاول لاحقًا. لم يصل رد يفيد بوجود خطأ في المفتاح."),
+            "provider_unavailable": ("The model service is temporarily unavailable. Try again later or check the configured model. This does not establish an invalid API key.", "خدمة النموذج غير متاحة حاليًا. حاول لاحقًا أو تحقق من النموذج المحدد. هذا لا يعني أن المفتاح غير صالح."),
+            "invalid_response": ("The provider returned an unreadable response. Try again later.", "أعاد المزود ردًا غير صالح للقراءة. حاول لاحقًا."),
             "missing_key": ("Add OPENROUTER_API_KEY to the server .env and restart Rafeeq.", "أضف OPENROUTER_API_KEY إلى ملف .env ثم أعد تشغيل رفيق."),
             "invalid_key": ("OpenRouter rejected the key (401). Replace the key in .env and restart.", "رفض OpenRouter المفتاح (401). استبدله في .env ثم أعد التشغيل."),
             "credits": ("OpenRouter reported insufficient credits (402). Check your account or select an available free tool-calling model.", "أبلغ OpenRouter عن عدم كفاية الرصيد (402). راجع حسابك أو اختر نموذجًا مجانيًا متاحًا يدعم الأدوات."),
@@ -410,7 +436,8 @@ async def run_agent(store: Store, sid: str, message: str, settings: Settings, mo
             final = ("لم أتمكن من تجهيز إجراء صالح للتأكيد. لم يُنفذ أي تغيير. راجع بيانات الطلب أو اختر موعدًا متاحًا ثم حاول مجددًا."
                      if arabic else "I could not prepare a valid action for confirmation. Nothing was changed. Check the application details or choose an available slot and retry.")
     usage_out = {"input_tokens": used_in, "output_tokens": used_out, "model_steps": steps,
-                 "reserved_upper_usd": round(reserved, 6), "pricing_is_configured_estimate": True}
+                 "reserved_upper_usd": round(reserved, 6), "pricing_is_configured_estimate": True,
+                 "models_used": models_used}
     store.event(trace, "turn", stopped=stopped, steps=steps, seconds=round(time.monotonic() - started, 3),
                 session_hash=store.trace_session(sid), **{k: v for k, v in usage_out.items() if k != "model_steps"})
     return Reply(reply=final, tools=called, actions=actions, stopped=stopped, usage=usage_out, trace_id=trace,

@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 
 from dotenv import load_dotenv
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 PROJECT = Path(__file__).resolve().parents[2]
 COURSE = PROJECT.parents[1]
@@ -18,7 +18,17 @@ class Settings(BaseModel):
     api_key: str = Field(default_factory=lambda: os.getenv("OPENROUTER_API_KEY", ""), repr=False)
     officer_token: str = Field(default_factory=lambda: os.getenv("RAFEEQ_OFFICER_TOKEN", ""), repr=False)
     reviewer_token: str = Field(default_factory=lambda: os.getenv("RAFEEQ_REVIEWER_TOKEN", ""), repr=False)
-    model: str = Field(default_factory=lambda: os.getenv("RAFEEQ_MODEL", "openrouter/free"))
+    model: str = Field(default_factory=lambda: os.getenv("RAFEEQ_MODEL", "nvidia/nemotron-3.5-lightning:free"))
+    fallback_model: str = Field(default_factory=lambda: os.getenv("RAFEEQ_FALLBACK_MODEL", ""), validate_default=True)
+
+    @field_validator("fallback_model")
+    @classmethod
+    def named_backup(cls, value: str) -> str:
+        value = value.strip()
+        if value and ("/" not in value or value.startswith("openrouter/")):
+            raise ValueError("RAFEEQ_FALLBACK_MODEL must be a specific model ID, not an automatic router")
+        return value
+
     max_steps: int = Field(default=8, ge=1, le=12)
     max_tokens: int = Field(default=900, ge=64, le=2000)
     max_context_chars: int = 24000
