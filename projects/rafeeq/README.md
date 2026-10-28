@@ -230,6 +230,11 @@ describe the browser checks and Windows coverage.
 I evaluated Rafeeq with `google/gemini-2.5-flash` on 29 October 2026 (Asia/Riyadh), using the same
 26 tasks on both retrieval configurations and one trial per task.
 
+I used Gemini through OpenRouter for the final evaluation after rate limits on the free-model routes
+interrupted testing. I pinned the same Gemini model for both configurations and disabled the chat
+backup during evaluation so model switching would not affect the comparison. Gemini and its provider
+still have their own quotas; this choice does not remove rate limits.
+
 | Configuration | Passed | Agent failures | Provider blocks | Unrun |
 |---|---:|---:|---:|---:|
 | A: word TF-IDF | 26/26 (100%) | 0 | 0 | 0 |
