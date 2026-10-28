@@ -5,6 +5,12 @@ not proof of publication, GitHub Actions execution, or restoration in a new clou
 
 ## Completed checks
 
+- Fresh public-clone check of commit `7c13d69`: `uv sync --frozen --python 3.12` installed successfully in a new
+  directory and environment. Three critical tests passed: both A/B scripted registration-to-booking workflows
+  with real MCP/database operations, plus API startup/assets/security checks. The published clone contains
+  `intake.py`, `scope.py`, `chat-forms.js` and `markdown.js`. This checks reproducibility on Linux, not native Windows
+  or a live AI provider.
+
 - Frozen dependency installation with `uv sync --frozen`; dependency versions recorded in `uv.lock`.
 - 49 pytest cases covering all five fee types, schema rejection, privacy boundaries, scoped/expiring identity,
   approval ownership, immutable proposals, replay/idempotence, database persistence, rescheduling, separate finance
@@ -62,11 +68,15 @@ answer correctness are not evaluated by this retrieval benchmark.
    Network settings must allow `openrouter.ai`; that requirement is saved in the cloud configuration draft.
 2. Pin `RAFEEQ_MODEL` to an available tool-calling model and verify the pricing assumptions in `.env`.
 3. Execute `uv run python -m rafeeq.evaluate live --trials 1` (26 agent tasks × two configurations).
-   This was attempted and exited 2 because the API key is absent. **Zero live-model tasks have run.**
+   Earlier attempts exited 2 because a key was absent; the fresh-clone attempt stopped because the model was
+   still the unpinned free router. A subsequent read-only authentication check using the current cloud binding
+   returned HTTP 401. That does not establish whether the user's separate local key works. **Zero live-model
+   tasks have run.** Configure a usable credential and a fixed tool-calling model before collecting results.
 4. Review real A/B transcripts, export synthetic-only CSVs, write end-to-end failure analysis, and repeat important
    action/privacy cases if the provider budget permits. The free router is deliberately rejected for controlled evals.
 5. Execute the live prompt-injection experiment and record a bilingual live demo plus a backup video.
-6. Complete an accessibility audit, a clean-clone installation, and verify the new CI workflow on GitHub.
+6. Complete an accessibility audit, a native Windows rehearsal, and verify the new CI workflow on GitHub.
+   Fresh-clone installation and critical API/MCP checks on Linux passed as recorded above.
    Desktop/mobile/RTL browser rendering was visually inspected; a full accessibility audit remains outstanding.
 7. Add team names and prepare final slides using the presentation outline.
 

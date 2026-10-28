@@ -13,7 +13,7 @@ unexecuted live-model evaluation, native Windows CI job, production deployment, 
 | Compaction or budget rule | 12-message history, context/result/output caps | Context/step/cost/deadline tests |
 | Human approval on a write | Immutable booking, refund and application proposals; citizen confirmation | Database remains unchanged before confirmation; ownership, expiry, replays and false-completion tests |
 | Step and cost budgets | Max eight model calls, four tool calls per model response, conservative price reservation | Cost guard and step-limit tests; configured prices must match the selected provider |
-| 15+ tasks, two configurations, automatic graders | 26 live-agent JSONL tasks, A/B retrieval configurations; grader checks tools, content, scope, secure cards and actual database changes | Live provider execution is **blocked by missing API key in the cloud workspace**. Run both configurations with a pinned model and export reviewed results |
+| 15+ tasks, two configurations, automatic graders | 26 live-agent JSONL tasks, A/B retrieval configurations; grader checks tools, content, scope, secure cards and actual database changes | Live inference remains **unrun**. The current cloud credential was rejected by the provider authentication check (HTTP 401), and the default free router must be replaced with a fixed model for the comparison. Local credentials may differ |
 | Error analysis | Recorded 20-query retrieval comparison and failure categories; live runner emits per-task CSVs and failure summaries | Retrieval A top-3 18/20; B 19/20. These are not agent success scores. Live agent failure analysis remains outstanding |
 | Security note, trifecta, attack and defence | `security.md`; separate roles, scoped reads, secure inline identity, no egress tools, safe Markdown | Offline red-team tool-call simulation and browser XSS check pass. Live-model injection susceptibility remains unmeasured |
 
@@ -40,7 +40,16 @@ under review may have pre-approval inspections. Reviewer and finance roles use s
 | Context and harness engineering | 25% | Mandatory grounding, safe task memory, strict schemas, scope gate, role gates, persisted proposals, budgets |
 | Evaluation and error analysis | 20% | 26-task live runner, two controlled configurations, offline retrieval CSV and workflow tests. Actual live scores are still required |
 | Security, governance, operability | 20% | Structural audit events, no secret logging, immutable approvals, reviewer/finance separation, offline attacks and browser rendering checks; synthetic-only/PDPL limitations documented |
-| Presentation and reproducibility | 10% | README, `.env.example`, lockfile, architecture and presentation outline; final slides, clean-clone rehearsal and demo recording remain required |
+| Presentation and reproducibility | 10% | README, `.env.example`, lockfile, architecture and presentation outline. Fresh public-clone installation and three critical API/MCP workflow checks passed on Linux; final slides, Windows rehearsal and live-demo recording remain required |
+
+## Course topics versus capstone requirements
+
+The learning outcomes describe the whole course. The stated capstone minimum does not require every listed
+library, every API shape, multiple agents or LangGraph. This implementation uses a native Chat Completions loop
+with OpenRouter, MCP, Pydantic, FastAPI and SQLite. It has persisted human-gated workflow states and structural
+audit events grouped by trace ID. It does not claim Responses/Messages adapters, an SDK harness, A2A, a LangGraph
+implementation or OpenTelemetry span export. Explain these scope decisions in the presentation; additional
+instructor-specific requirements would need separate implementation and validation.
 
 ## Run locally on Windows
 
