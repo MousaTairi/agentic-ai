@@ -1,0 +1,20 @@
+{"id":"permit-documents-en","query":"building title deed engineering drawings required documents","policy":"POL-01"}
+{"id":"permit-documents-ar","query":"المستندات المطلوبة لرخصة البناء","policy":"POL-01"}
+{"id":"fee-en","query":"illuminated sign fee surcharge minimum","policy":"POL-02"}
+{"id":"fee-ar","query":"رسوم اللوحة المضيئة والحد الأدنى","policy":"POL-02"}
+{"id":"sla-en","query":"office hours service level working days","policy":"POL-03"}
+{"id":"sla-ar","query":"ساعات العمل وأيام العمل","policy":"POL-03"}
+{"id":"lifecycle-en","query":"needs_info missing documents automatic withdrawal deadline","policy":"POL-04"}
+{"id":"lifecycle-ar","query":"سحب الطلب تلقائيًا عند نقص المستندات","policy":"POL-04"}
+{"id":"inspection-en","query":"reschedule inspection 24 hours booking slots","policy":"POL-05"}
+{"id":"inspection-ar","query":"إعادة جدولة الفحص الميداني والموعد الفائت","policy":"POL-05"}
+{"id":"appeal-en","query":"appeal rejected decision appeals committee deadline","policy":"POL-06"}
+{"id":"appeal-ar","query":"الاعتراض واسترداد الرسوم","policy":"POL-06"}
+{"id":"violations-en","query":"penalties fines operating without valid permit","policy":"POL-07"}
+{"id":"violations-ar","query":"المخالفات والغرامات","policy":"POL-07"}
+{"id":"identity-en","query":"privacy verify identity last four digits mobile","policy":"POL-08"}
+{"id":"identity-ar","query":"الخصوصية والتحقق من الهوية والإفصاح","policy":"POL-08"}
+{"id":"zones-en","query":"food truck designated zones Corniche Park Loop","policy":"POL-09"}
+{"id":"zones-ar","query":"مناطق عربات الطعام المعتمدة","policy":"POL-09"}
+{"id":"scope-en","query":"contact channels assistant scope phone email portal","policy":"POL-10"}
+{"id":"scope-ar","query":"قنوات التواصل ونطاق المساعد الرقمي","policy":"POL-10"}

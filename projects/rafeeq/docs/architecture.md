@@ -1,0 +1,56 @@
+# Architecture and state
+
+```mermaid
+flowchart TD
+  Browser[HTML + CSS + JS, bilingual] --> API[FastAPI, cookie session, CSRF boundary]
+  API --> Verify[Local verification, scope + expiry]
+  API --> Agent[Single bounded agent loop]
+  Agent --> Model[OpenRouter HTTPS API]
+  Agent --> MCP[Read-only MCP subprocess]
+  MCP --> Policies[Ten bilingual policies, TF-IDF retrieval]
+  MCP --> Slots[Public inspection slots]
+  Agent --> Record[Authorized minimized permit read]
+  Agent --> Proposal[Persist immutable action proposal]
+  Browser --> Confirm[Citizen confirms exact proposal]
+  Confirm --> Transaction[Revalidate + atomic SQLite transaction]
+  Transaction --> Officer[Finance queue if above 1000 SAR]
+  Officer --> Finance[Separate officer token + decision]
+  API --> Events[Structural audit events, no raw arguments]
+```
+
+Source modules separate settings, strict schemas, storage, business rules, retrieval, MCP, agent and API.
+The MCP subprocess has its own SQLite connection, reads shared slots, and never initializes over an existing DB.
+Model API and officer credentials are removed from its environment, and dotenv loading is disabled there.
+
+## SQLite state
+
+- `sessions`: opaque random ID, bounded public history, expiration, verified permit scope and expiry,
+  failed-verification count, rate window/count.
+- `actions`: random action ID, owner session, tool, canonical validated arguments, status, expiration, result.
+- `events`: timestamp, trace ID, event name, structural metadata. No raw messages, tool arguments or outputs.
+- Course tables: synthetic applicants, permits, payments, inspections and slots; refunds are simulated records.
+
+```mermaid
+stateDiagram-v2
+  [*] --> pending: validated proposal
+  pending --> rejected: citizen rejects
+  pending --> expired: confirmation window elapsed
+  pending --> cancelled: session cleared
+  pending --> completed: citizen confirms eligible booking or small refund
+  pending --> awaiting_officer: citizen confirms refund above 1000 SAR
+  awaiting_officer --> completed: separate officer confirms
+  awaiting_officer --> rejected: separate officer rejects
+```
+
+No monetary or inspection side effect occurs at proposal time. A transaction locks and rechecks state on decision,
+so duplicate decisions return the stored terminal result. Officer decisions use immutable stored arguments;
+the browser cannot replace slot or refund amount. Finance expiry is checked at decision time.
+
+## Data flow and minimization
+
+Verification form → backend comparison against synthetic records → application-scoped session flag.
+The model never receives the form's mobile or ID digits. Model-driven lookup → scope check → selected fields only.
+Public chat → bounded SQLite history; private task replies → generic context placeholder rather than saved facts.
+The browser displays replies using `textContent`; it never executes model-supplied HTML or markdown.
+
+Use the existing checkout; no additional worktree is needed. Database processes must restart in fresh cloud tasks.

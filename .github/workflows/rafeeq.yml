@@ -1,0 +1,24 @@
+name: Rafeeq local checks
+on:
+  push:
+    paths: ['projects/rafeeq/**', '.github/workflows/rafeeq.yml']
+  pull_request:
+    paths: ['projects/rafeeq/**', '.github/workflows/rafeeq.yml']
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: projects/rafeeq
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --frozen --python 3.12
+      - run: uv run ruff check .
+      - run: uv run pytest -q
+      - run: uv run python -m rafeeq.redteam
+      - run: uv run python -m rafeeq.evaluate retrieval
