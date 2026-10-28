@@ -170,6 +170,34 @@ The separate 20-query offline retrieval benchmark is **not** an end-to-end agent
 results for the capstone's live-model evaluation. Export reviewed synthetic-only result CSVs and error analysis
 into `docs/results/` before final submission. Never publish raw transcripts containing secrets or real PII.
 
+The evaluator now alternates paired A/B tasks and paces actual provider requests at ten/minute by default.
+Use `--requests-per-minute` to select a rate within your provider's current allowance; pacing does not restore
+an exhausted daily quota. A provider error stops the run, writes an atomic checkpoint and reports the case as
+`blocked_provider`, not a pile of missing-tool/content failures. Results also show unrun counts and comparison coverage.
+
+For a diagnostic subset on Windows:
+
+```powershell
+py -m uv run python -m rafeeq.evaluate live --task-ids fee-sign-en fee-foodtruck-ar status-verified-en status-verified-ar --requests-per-minute 10
+```
+
+After quota/authentication recovers, resume using the printed results directory and identical task IDs, trials,
+model and request rate:
+
+```powershell
+py -m uv run python -m rafeeq.evaluate live --resume --output "evals/results/YOUR_RUN_FOLDER" --task-ids fee-sign-en fee-foodtruck-ar status-verified-en status-verified-ar --requests-per-minute 10
+```
+
+Completed passes and genuine agent failures are preserved; only blocked/unrun cases are retried. Earlier blocked
+attempts remain in `checkpoint.json`. A changed source/model/task manifest requires a new experiment, so an old
+result folder from before checkpoints were introduced cannot be resumed. `manifest.json` records the model, code/
+task fingerprints and non-secret run settings. A reported comparison is complete only when all cases ran without
+provider blocks. Provider failures are not evidence that one retrieval configuration is worse.
+
+See [the first submitted live-run analysis](docs/results/first-live-run-review.md) for raw scores, six Unicode
+citation grading errors, real workflow failures and the HTTP 429 coverage problem. The format-only regrade is
+labelled separately from new model results; patched agent performance still needs a fresh live run.
+
 ## Submission checklist
 
 - Live AI demo with 3+ tools, MCP and a visible approval; record a backup video.

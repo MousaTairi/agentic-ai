@@ -13,8 +13,8 @@ unexecuted live-model evaluation, native Windows CI job, production deployment, 
 | Compaction or budget rule | 12-message history, context/result/output caps | Context/step/cost/deadline tests |
 | Human approval on a write | Immutable booking, refund and application proposals; citizen confirmation | Database remains unchanged before confirmation; ownership, expiry, replays and false-completion tests |
 | Step and cost budgets | Max eight model calls, four tool calls per model response, conservative price reservation | Cost guard and step-limit tests; configured prices must match the selected provider |
-| 15+ tasks, two configurations, automatic graders | 26 live-agent JSONL tasks, A/B retrieval configurations; grader checks tools, content, scope, secure cards and actual database changes | Live inference remains **unrun**. The current cloud credential was rejected by the provider authentication check (HTTP 401), and the default free router must be replaced with a fixed model for the comparison. Local credentials may differ |
-| Error analysis | Recorded 20-query retrieval comparison and failure categories; live runner emits per-task CSVs and failure summaries | Retrieval A top-3 18/20; B 19/20. These are not agent success scores. Live agent failure analysis remains outstanding |
+| 15+ tasks, two configurations, automatic graders | 26 live-agent JSONL tasks, paired A/B configurations; automatic graders, request pacing, checkpoints and resume | User supplied 52 live-task outcomes with a fixed model. Thirty hit provider HTTP 429, so the run is not a valid A/B quality comparison. A complete post-fix run is still required |
+| Error analysis | Recorded retrieval comparison plus analysis of the submitted live transcripts | First live run separates six Unicode-citation false failures, genuine workflow errors and provider blocks; see `results/first-live-run-review.md`. Format-only regrading is not a new inference result |
 | Security note, trifecta, attack and defence | `security.md`; separate roles, scoped reads, secure inline identity, no egress tools, safe Markdown | Offline red-team tool-call simulation and browser XSS check pass. Live-model injection susceptibility remains unmeasured |
 
 ## The actual citizen workflow
@@ -38,7 +38,7 @@ under review may have pre-approval inspections. Reviewer and finance roles use s
 |---|---:|---|
 | Working system and live demo | 25% | API, bilingual chat, real MCP/database, in-chat intake and confirmation. Rehearse with the actual configured model and record a backup |
 | Context and harness engineering | 25% | Mandatory grounding, safe task memory, strict schemas, scope gate, role gates, persisted proposals, budgets |
-| Evaluation and error analysis | 20% | 26-task live runner, two controlled configurations, offline retrieval CSV and workflow tests. Actual live scores are still required |
+| Evaluation and error analysis | 20% | First 52-outcome live run and explicit failure analysis available. Pacing/stop/resume prevent misleading quota-driven comparisons; complete post-fix paired results are still required |
 | Security, governance, operability | 20% | Structural audit events, no secret logging, immutable approvals, reviewer/finance separation, offline attacks and browser rendering checks; synthetic-only/PDPL limitations documented |
 | Presentation and reproducibility | 10% | README, `.env.example`, lockfile, architecture and presentation outline. Fresh public-clone installation and three critical API/MCP workflow checks passed on Linux; final slides, Windows rehearsal and live-demo recording remain required |
 

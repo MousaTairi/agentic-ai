@@ -104,6 +104,11 @@ class Application(Fee):
 class VerificationRequest(StrictModel):
     permit_id: str | None = None
 
+    @field_validator("permit_id", mode="before")
+    @classmethod
+    def canonical_optional_reference(cls, value):
+        return Permit.canonical_reference(value) if value is not None else None
+
 
 class Chat(StrictModel):
     message: str = Field(min_length=1, max_length=4000)
@@ -121,3 +126,5 @@ class Reply(BaseModel):
     usage: dict
     trace_id: str
     ui_requests: list[dict] = Field(default_factory=list)
+    error_code: str | None = None
+    tool_events: list[dict] = Field(default_factory=list)

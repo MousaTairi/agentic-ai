@@ -29,8 +29,11 @@ def supported(message: str, has_context: bool) -> bool:
 def intent(message: str) -> str:
     if re.search(r"register|sign.up|create.*account|تسجيل|سجلني|إنشاء حساب|انشاء حساب", message, re.I):
         return "register"
+    if (re.search(r"status|deadline|حالة|موعد.*اعتراض", message, re.I)
+            and not re.search(r"book|reserv|حجز|احجز|أحجز|فحص|تفتيش", message, re.I)):
+        return "policy"
     if re.search(r"(?:apply|submit|get|obtain|continue).*(?:permit|application)|(?:أحصل|احصل|تقديم|أقدم|اقدم).*(?:رخص|تصريح|طلب)", message, re.I):
         return "apply"
-    if re.search(r"book|reserv|reschedul|حجز|احجز|أحجز|موعد|جدول", message, re.I):
+    if re.search(r"book|reserv|reschedul|حجز|احجز|أحجز|(?:موعد|جدول).*(?:فحص|تفتيش)|(?:فحص|تفتيش).*موعد", message, re.I):
         return "book"
     return "policy"

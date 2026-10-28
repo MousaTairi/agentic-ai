@@ -58,18 +58,26 @@ class ProviderFailure(RuntimeError):
 
 
 class OpenRouter:
+    def __init__(self, min_interval: float = 0):
+        self.min_interval = min_interval
+        self.last_request = 0.0
+
     async def complete(self, messages: list[dict], settings: Settings) -> dict:
         if not settings.api_key:
             raise ProviderFailure("missing_key")
         async with httpx.AsyncClient(timeout=25) as client:
             for attempt in range(2):
+                delay = self.min_interval - (time.monotonic() - self.last_request)
+                if delay > 0:
+                    await asyncio.sleep(delay)
+                self.last_request = time.monotonic()
                 response = await client.post("https://openrouter.ai/api/v1/chat/completions",
                     headers={"Authorization": f"Bearer {settings.api_key}"},
                     json={"model": settings.model, "messages": messages, "tools": TOOLS,
                           "max_tokens": settings.max_tokens, "temperature": 0,
                           "tool_choice": "auto",
                           "provider": {"require_parameters": True}})
-                if response.status_code in (429, 502, 503) and attempt == 0:
+                if response.status_code in (502, 503) and attempt == 0:
                     await asyncio.sleep(1)
                     continue
                 if response.is_error:
@@ -127,6 +135,12 @@ async def dispatch(name: str, raw: str, store: Store, sid: str, mcp: ClientSessi
             kind = {"start_registration": "registration", "start_verification": "verification", "start_application": "application"}[name]
             if kind == "application" and not store.session(sid)["citizen_id"]:
                 kind = "registration"
+            if kind == "verification":
+                current = store.session(sid)
+                reference = args.get("permit_id") or current["verified"]
+                if reference and reference == current["verified"] and current["verified_until"] > time.time():
+                    return {"ok": True, "data": permit_info(store, sid, reference),
+                            "note": "Identity is already verified for this application. Use these record facts; do not ask again."}
             return {"ok": True, "ui_request": {"type": kind, **args},
                     "note": "The secure card is now inside chat. Ask the citizen to complete it; never collect identity in text."}
         if name == "submit_application":
@@ -155,8 +169,9 @@ async def dispatch(name: str, raw: str, store: Store, sid: str, mcp: ClientSessi
             return {"ok": False, "error": "MCP tool failed validation or execution."}
         content = "\n".join(c.text for c in result.content if c.type == "text")
         return json.loads(content)
-    except ValidationError:
-        return {"ok": False, "error": "Invalid tool arguments. Follow the tool schema; ask for missing inputs."}
+    except ValidationError as exc:
+        return {"ok": False, "error": "Invalid tool arguments. Correct the listed fields using the schema.",
+                "fields": [{"field": ".".join(str(part) for part in e["loc"]), "type": e["type"]} for e in exc.errors()]}
     except (ValueError, PermissionError) as exc:
         return {"ok": False, "error": str(exc)}
 
@@ -181,12 +196,15 @@ async def run_agent(store: Store, sid: str, message: str, settings: Settings, mo
     used_in, used_out, reserved, steps = 0, 0, 0., 0
     called: list[str] = []
     ui_requests: list[dict] = []
+    tool_events: list[dict] = []
+    authorized_info = None
     required_ui = ("start_registration" if task in ("apply", "register") and not session["citizen_id"]
                    else "start_application" if task in ("apply", "register")
                    else "start_verification" if task == "book" and session["verified_until"] < time.time()
                    else None)
     final, stopped = "", "steps"
     failure_code = None
+    finish_reason = None
     started = time.monotonic()
     provider = model or OpenRouter()
     try:
@@ -201,13 +219,42 @@ async def run_agent(store: Store, sid: str, message: str, settings: Settings, mo
             ])
             called.append("search_policies")
             store.event(trace, "tool", name="search_policies", ok=initial.get("ok", False))
+            tool_events.append({"name": "search_policies", "ok": initial.get("ok", False)})
+            # Supply authorized record facts upfront for explicit status/deadline queries.
+            refs = re.findall(r"(?:BLD|REN|SGN|FTR|EVT)[-‑–]\d{5}", message, re.I)
+            requested = Permit.canonical_reference(refs[0]) if refs else None
+            if (requested and requested == session["verified"] and session["verified_until"] > time.time()
+                    and re.search(r"status|deadline|حالة|موعد.*اعتراض", message, re.I)):
+                info = await dispatch("get_permit", json.dumps({"permit_id": requested}), store, sid, mcp, settings.configuration)
+                if info.get("ok"):
+                    authorized_info = info["data"]
+                called.append("get_permit")
+                tool_events.append({"name": "get_permit", "ok": info.get("ok", False)})
+                record_id = "record-" + trace
+                messages.extend([
+                    {"role": "assistant", "content": None, "tool_calls": [{"id": record_id, "type": "function",
+                     "function": {"name": "get_permit", "arguments": json.dumps({"permit_id": requested})}}]},
+                    {"role": "tool", "tool_call_id": record_id, "content": json.dumps(info, ensure_ascii=False)},
+                ])
+            # FTR has a fixed public fee; compute it even if a weak model would quote memory instead.
+            if re.search(r"fee|cost|رسوم|تكلف", message, re.I) and re.search(r"\bFTR\b|food.?truck|عربة.*طعام|عربات.*طعام", message, re.I):
+                computed = await dispatch("compute_fee", '{"permit_type":"FTR"}', store, sid, mcp, settings.configuration)
+                called.append("compute_fee")
+                tool_events.append({"name": "compute_fee", "ok": computed.get("ok", False), "data": computed.get("data")})
+                quote_id = "fee-" + trace
+                messages.extend([
+                    {"role": "assistant", "content": None, "tool_calls": [{"id": quote_id, "type": "function",
+                     "function": {"name": "compute_fee", "arguments": '{"permit_type":"FTR"}'}}]},
+                    {"role": "tool", "tool_call_id": quote_id, "content": json.dumps(computed)},
+                ])
             if required_ui:
                 opened = await dispatch(required_ui, "{}", store, sid, mcp, settings.configuration)
-                ui_requests.append(opened["ui_request"])
+                if opened.get("ui_request"):
+                    ui_requests.append(opened["ui_request"])
                 called.append(required_ui)
                 store.event(trace, "tool", name=required_ui, ok=True)
                 messages.append({"role": "system", "content": "The harness already opened this secure chat card: "
-                                 + json.dumps(opened["ui_request"]) + ". Briefly explain the next step. Do not send the user to another platform."})
+                                 + json.dumps(opened.get("ui_request", opened.get("data"))) + ". Briefly explain the next step. Do not send the user to another platform."})
             for _ in range(settings.max_steps):
                 serialized = json.dumps(messages, ensure_ascii=False)
                 if len(serialized) > settings.max_context_chars:
@@ -228,6 +275,7 @@ async def run_agent(store: Store, sid: str, message: str, settings: Settings, mo
                     failure_code = exc.code if isinstance(exc, ProviderFailure) else "provider_unavailable"
                     break
                 steps += 1
+                finish_reason = response["choices"][0].get("finish_reason")
                 usage = response.get("usage", {})
                 used_in += usage.get("prompt_tokens", 0)
                 used_out += usage.get("completion_tokens", 0)
@@ -235,11 +283,11 @@ async def run_agent(store: Store, sid: str, message: str, settings: Settings, mo
                 calls = msg.get("tool_calls") or []
                 messages.append({k: v for k, v in msg.items() if k in ("role", "content", "tool_calls")})
                 if not calls:
-                    if task == "book" and not required_ui and not any(t in called for t in ("book_inspection", "reschedule_inspection")) and steps == 1:
+                    if task == "book" and not required_ui and not any(e["ok"] and e["name"] in ("book_inspection", "reschedule_inspection") for e in tool_events) and steps == 1:
                         messages.append({"role": "user", "content": "Please help complete the booking, not just explain it. Read my verified application, list available slots (defaults are allowed), then propose a suitable slot for confirmation. If not eligible, explain the exact status and next human review step."})
                         continue
                     final = redact(msg.get("content") or "")
-                    if task == "book" and not required_ui and not any(t in called for t in ("book_inspection", "reschedule_inspection")):
+                    if task == "book" and not required_ui and not any(e["ok"] and e["name"] in ("book_inspection", "reschedule_inspection") for e in tool_events):
                         # Provide a next action even when a weak model stops after an explanation.
                         try:
                             current = store.session(sid)
@@ -263,6 +311,8 @@ async def run_agent(store: Store, sid: str, message: str, settings: Settings, mo
                         except PermissionError:
                             ui_requests.append({"type": "verification"})
                     stopped = "completed" if final else "empty_response"
+                    if stopped == "empty_response":
+                        failure_code = "output_limit" if finish_reason == "length" else "empty_model_output"
                     break
                 if len(calls) > 4:
                     stopped = "tool_budget"
@@ -272,6 +322,12 @@ async def run_agent(store: Store, sid: str, message: str, settings: Settings, mo
                     result = await dispatch(name, call["function"]["arguments"], store, sid, mcp, settings.configuration)
                     if name not in called:
                         called.append(name)
+                    event = {"name": name, "ok": result.get("ok", False)}
+                    if not result.get("ok"):
+                        event.update(error=result.get("error"), fields=result.get("fields", []))
+                    if name == "compute_fee" and result.get("ok"):
+                        event["data"] = result.get("data")
+                    tool_events.append(event)
                     if result.get("ui_request") and result["ui_request"] not in ui_requests:
                         ui_requests.append(result["ui_request"])
                     store.event(trace, "tool", name=name, ok=result.get("ok", False))
@@ -279,6 +335,12 @@ async def run_agent(store: Store, sid: str, message: str, settings: Settings, mo
                     if len(content) > 15000:
                         content = json.dumps({"ok": False, "error": "Result exceeds budget. Narrow your query."})
                     messages.append({"role": "tool", "tool_call_id": call["id"], "content": content})
+                # The persisted proposal is the authoritative reply. Avoid another provider call merely to
+                # paraphrase it (which can hit quota or incorrectly claim completion).
+                if any(e["ok"] and e["name"] in (*WRITE_SCHEMAS, "submit_application") for e in tool_events):
+                    stopped = "completed"
+                    final = "Prepared for confirmation."
+                    break
     except TimeoutError:
         stopped = "deadline"
     except (RuntimeError, httpx.HTTPError):
@@ -295,11 +357,13 @@ async def run_agent(store: Store, sid: str, message: str, settings: Settings, mo
             "missing_key": ("Add OPENROUTER_API_KEY to the server .env and restart Rafeeq.", "أضف OPENROUTER_API_KEY إلى ملف .env ثم أعد تشغيل رفيق."),
             "invalid_key": ("OpenRouter rejected the key (401). Replace the key in .env and restart.", "رفض OpenRouter المفتاح (401). استبدله في .env ثم أعد التشغيل."),
             "credits": ("OpenRouter reported insufficient credits (402). Check your account or select an available free tool-calling model.", "أبلغ OpenRouter عن عدم كفاية الرصيد (402). راجع حسابك أو اختر نموذجًا مجانيًا متاحًا يدعم الأدوات."),
-            "rate_limit": ("The model provider rate limit was reached (429). Wait and retry.", "تم بلوغ حد طلبات المزود (429). انتظر ثم حاول مجددًا."),
+            "rate_limit": ("The provider returned 429. Check its per-minute and daily quota before retrying.", "أعاد المزود الرمز 429. تحقق من حدود الطلبات بالدقيقة واليوم قبل إعادة المحاولة."),
             "access_denied": ("OpenRouter refused access (403). Check the key and model permissions.", "رفض OpenRouter الوصول (403). تحقق من صلاحية المفتاح وأذونات النموذج."),
             "model_unavailable": ("The selected model is unavailable (404). Update RAFEEQ_MODEL in .env.", "النموذج المختار غير متاح (404). حدّث RAFEEQ_MODEL في .env."),
             "model_parameters": ("The provider rejected this model's tool-calling request (400). Choose a compatible model.", "رفض المزود طلب الأدوات لهذا النموذج (400). اختر نموذجًا متوافقًا."),
             "tool_unavailable": ("The municipal tools could not start. Restart Rafeeq and check the server log.", "تعذر تشغيل أدوات الخدمات البلدية. أعد تشغيل رفيق وراجع سجل الخادم."),
+            "empty_model_output": ("The model returned no usable answer. No authentication error was reported. Retry with a shorter request.", "لم يُرجع النموذج إجابة صالحة. لم يُبلغ المزود عن خطأ في المفتاح. حاول بطلب أقصر."),
+            "output_limit": ("The model reached its output limit before producing an answer. No unconfirmed action was executed.", "بلغ النموذج حد الإخراج قبل تقديم الإجابة. لم يُنفذ إجراء دون تأكيد."),
         }
         if failure_code in reasons:
             final = reasons[failure_code][int(ar)]
@@ -324,7 +388,20 @@ async def run_agent(store: Store, sid: str, message: str, settings: Settings, mo
     for a in actions:
         a["args"] = json.loads(a["args"])
         a["result"] = json.loads(a["result"] or "null")
-    if stopped == "completed" and any(t in called for t in (*WRITE_SCHEMAS, "submit_application")):
+    if stopped == "completed" and "compute_fee" in called and not re.search(r"POL[-‑‐–]02", final, re.I):
+        final += " (POL-02)"
+    if stopped == "completed" and authorized_info is not None and task == "policy":
+        # Status and statutory dates come from the authorized record, never a second identity guess.
+        status = authorized_info["status"]
+        translated = {"approved": "موافق عليه", "rejected": "مرفوض", "under_review": "قيد المراجعة",
+                      "submitted": "مقدّم", "needs_info": "بحاجة إلى معلومات", "withdrawn": "مسحوب"}
+        final = (("حالة الطلب " + authorized_info["permit_id"] + ": **" + translated.get(status, status) + "** (POL-04).")
+                 if arabic else "Application " + authorized_info["permit_id"] + ": **" + status + "** (POL-04).")
+        if authorized_info.get("appeal_deadline"):
+            final += ((" آخر موعد للاعتراض: " if arabic else " Appeal deadline: ")
+                      + authorized_info["appeal_deadline"] + " (POL-06).")
+    if (stopped == "completed" and any(t in called for t in (*WRITE_SCHEMAS, "submit_application"))
+            and not any(request["type"] == "inspection_slots" for request in ui_requests)):
         pending = [a for a in actions if a["status"] == "pending" and a["expires"] > time.time()]
         if pending:
             final = ("جهّزت طلبك للمراجعة. راجع التفاصيل في بطاقة التأكيد أدناه ثم أكّد أو ارفض. لم يُنفذ الإجراء بعد."
@@ -336,4 +413,5 @@ async def run_agent(store: Store, sid: str, message: str, settings: Settings, mo
                  "reserved_upper_usd": round(reserved, 6), "pricing_is_configured_estimate": True}
     store.event(trace, "turn", stopped=stopped, steps=steps, seconds=round(time.monotonic() - started, 3),
                 session_hash=store.trace_session(sid), **{k: v for k, v in usage_out.items() if k != "model_steps"})
-    return Reply(reply=final, tools=called, actions=actions, stopped=stopped, usage=usage_out, trace_id=trace, ui_requests=ui_requests)
+    return Reply(reply=final, tools=called, actions=actions, stopped=stopped, usage=usage_out, trace_id=trace,
+                 ui_requests=ui_requests, error_code=failure_code, tool_events=tool_events)

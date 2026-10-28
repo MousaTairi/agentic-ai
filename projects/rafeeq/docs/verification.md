@@ -12,7 +12,7 @@ not proof of publication, GitHub Actions execution, or restoration in a new clou
   or a live AI provider.
 
 - Frozen dependency installation with `uv sync --frozen`; dependency versions recorded in `uv.lock`.
-- 49 pytest cases covering all five fee types, schema rejection, privacy boundaries, scoped/expiring identity,
+- 64 pytest cases covering all five fee types, schema rejection, privacy boundaries, scoped/expiring identity,
   approval ownership, immutable proposals, replay/idempotence, database persistence, rescheduling, separate finance
   approval, real MCP subprocess round trips, public follow-up context, cost/step/context/deadline controls,
   rate limits, missing-provider handling, and HTTP security boundaries.
@@ -64,14 +64,22 @@ answer correctness are not evaluated by this retrieval benchmark.
 
 ## Outstanding before capstone submission
 
+The user subsequently supplied 52 task outcomes from a live run with `nvidia/nemotron-3.5-lightning:free`.
+Thirty were blocked by HTTP 429 (A: seven; B: 23). Six correct A answers failed on Unicode policy-ID punctuation.
+See [the evidence-based error analysis](results/first-live-run-review.md). That run does not support an A/B quality
+conclusion. The new grading/verification/deadline/quota fixes passed offline regressions; no new provider inference
+was performed while reviewing the uploads. Additional tests cover checkpoints, resume, blocked-run coverage and
+safe tool-validation diagnostics. Original uploads were not overwritten or published as raw transcripts.
+
 1. Set `OPENROUTER_API_KEY` securely in ignored `.env` or environment settings and restart the backend.
    Network settings must allow `openrouter.ai`; that requirement is saved in the cloud configuration draft.
 2. Pin `RAFEEQ_MODEL` to an available tool-calling model and verify the pricing assumptions in `.env`.
 3. Execute `uv run python -m rafeeq.evaluate live --trials 1` (26 agent tasks × two configurations).
    Earlier attempts exited 2 because a key was absent; the fresh-clone attempt stopped because the model was
    still the unpinned free router. A subsequent read-only authentication check using the current cloud binding
-   returned HTTP 401. That does not establish whether the user's separate local key works. **Zero live-model
-   tasks have run.** Configure a usable credential and a fixed tool-calling model before collecting results.
+   returned HTTP 401. Those were cloud checks before the user supplied the separate local live run described
+   above. Local credentials may differ. Collect a complete new paired run after quota recovers; do not label
+   the format-only regrade as a model rerun.
 4. Review real A/B transcripts, export synthetic-only CSVs, write end-to-end failure analysis, and repeat important
    action/privacy cases if the provider budget permits. The free router is deliberately rejected for controlled evals.
 5. Execute the live prompt-injection experiment and record a bilingual live demo plus a backup video.

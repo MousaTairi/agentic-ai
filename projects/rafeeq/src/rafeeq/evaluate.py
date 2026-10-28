@@ -4,16 +4,17 @@ from __future__ import annotations
 import argparse
 import asyncio
 import csv
+import hashlib
 import json
 import tempfile
 import time
-from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
-from .agent import run_agent
+from .agent import OpenRouter, run_agent
 from .config import PROJECT, Settings
 from .domain import decide, verify
+from .evaluation_reporting import canonical_text, contains_expected, summary_for
 from .retrieval import search
 from .schemas import Verify
 from .storage import Store
@@ -21,14 +22,14 @@ from .storage import Store
 
 def grade(task: dict, reply, store: Store, sid: str) -> list[str]:
     failures = []
-    text = reply.reply.translate(str.maketrans("٠١٢٣٤٥٦٧٨٩", "0123456789")).replace(",", "").lower()
+    text = canonical_text(reply.reply)
     if reply.stopped != task.get("expected_stop", "completed"):
-        failures.append("execution:" + reply.stopped)
+        return ["execution:" + reply.stopped]
     for group in task.get("contains", []):
-        if not any(term.lower().replace(",", "") in text for term in group):
+        if not any(contains_expected(text, term) for term in group):
             failures.append("answer_content")
     for term in task.get("forbidden", []):
-        if term.lower() in text:
+        if canonical_text(term) in text:
             failures.append("privacy_disclosure")
     for tool in task.get("tools", []):
         if tool not in reply.tools:
@@ -63,48 +64,117 @@ def grade(task: dict, reply, store: Store, sid: str) -> list[str]:
     return sorted(set(failures))
 
 
-async def live(tasks: list[dict], output: Path, trials: int) -> int:
-    base = Settings()
-    if not base.api_key:
+def atomic_json(path: Path, value) -> None:
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    temporary.write_text(json.dumps(value, ensure_ascii=False, indent=2), encoding="utf-8")
+    temporary.replace(path)
+
+
+def experiment_manifest(base: Settings, tasks: list[dict], trials: int) -> dict:
+    source = hashlib.sha256()
+    paths = [*sorted((PROJECT / "src/rafeeq").glob("*.py")), PROJECT / "AGENTS.md", PROJECT / "uv.lock"]
+    paths += sorted((PROJECT.parents[1] / "labs/data/policies").glob("*.md"))
+    for path in paths:
+        source.update(path.name.encode())
+        source.update(path.read_bytes())
+    return {"model": base.model, "trials": trials,
+            "tasks_sha256": hashlib.sha256(json.dumps(tasks, sort_keys=True, ensure_ascii=False).encode()).hexdigest(),
+            "source_sha256": source.hexdigest(),
+            "settings": {key: getattr(base, key) for key in
+                         ("max_steps", "max_tokens", "max_context_chars", "max_cost", "input_rate", "output_rate")}}
+
+
+def export_results(output: Path, attempts: list[dict], planned: int) -> dict:
+    # Retain every attempt in the checkpoint. The current CSV selects the latest attempt per task/config/trial.
+    latest = {}
+    for attempt in attempts:
+        row = attempt["row"]
+        latest[(row["config"], row["task"], row["trial"])] = attempt
+    selected = list(latest.values())
+    rows = [entry["row"] for entry in selected]
+    if rows:
+        with (output / "agent-results.csv").open("w", encoding="utf-8", newline="") as handle:
+            writer = csv.DictWriter(handle, fieldnames=list(rows[0]))
+            writer.writeheader()
+            writer.writerows(rows)
+    atomic_json(output / "transcripts.json", [entry["detail"] for entry in selected])
+    summary = summary_for(rows, planned)
+    atomic_json(output / "summary.json", summary)
+    return summary
+
+
+async def live(tasks: list[dict], output: Path, trials: int, *, resume: bool = False,
+               requests_per_minute: float = 10, settings: Settings | None = None, provider=None) -> int:
+    base = settings or Settings()
+    if not base.api_key and provider is None:
         print("BLOCKED: OPENROUTER_API_KEY is missing. No model evaluations were executed.")
         return 2
     if base.model == "openrouter/free":
         print("BLOCKED: Pin RAFEEQ_MODEL to a specific tool-calling model for a controlled A/B comparison.")
         return 2
-    rows = []
-    details = []
-    for config in ("A", "B"):
+    if requests_per_minute <= 0:
+        raise ValueError("requests_per_minute must be positive")
+    manifest = experiment_manifest(base, tasks, trials)
+    manifest["requests_per_minute"] = requests_per_minute
+    manifest["run_kind"] = "scripted_test_fixture" if provider is not None else "live_provider"
+    attempts = []
+    if resume:
+        previous = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
+        if previous != manifest:
+            raise ValueError("Cannot resume with different model, code, tasks, trials or settings. Start a new output folder.")
+        attempts = json.loads((output / "checkpoint.json").read_text(encoding="utf-8"))
+    else:
+        output.mkdir(parents=True, exist_ok=False)
+        atomic_json(output / "manifest.json", manifest)
+        atomic_json(output / "checkpoint.json", attempts)
+    completed = {(entry["row"]["config"], entry["row"]["task"], entry["row"]["trial"])
+                 for entry in attempts if entry["row"]["outcome"] != "blocked_provider"}
+    model = provider if provider is not None else OpenRouter(min_interval=60 / requests_per_minute)
+    try:
         for trial in range(1, trials + 1):
-            for task in tasks:
-                with tempfile.TemporaryDirectory(prefix="rafeeq-eval-") as folder:
-                    settings = base.model_copy(update={"runtime": Path(folder), "configuration": config})
-                    store = Store(settings.runtime)
-                    sid = store.new_session()
-                    if task.get("verify"):
-                        verify(store, sid, Verify(**task["verify"]))
-                    started = time.monotonic()
-                    reply = await run_agent(store, sid, task["prompt"], settings)
-                    errors = grade(task, reply, store, sid)
-                    rows.append({"config": config, "trial": trial, "task": task["id"],
-                                 "category": task["category"], "passed": not errors,
-                                 "errors": "|".join(errors), "seconds": round(time.monotonic() - started, 3),
-                                 "model": settings.model, **reply.usage})
-                    details.append({"config": config, "trial": trial, "task": task["id"],
-                                    "reply": reply.model_dump(), "errors": errors})
-                    print(config, trial, task["id"], "PASS" if not errors else errors, flush=True)
-    output.mkdir(parents=True, exist_ok=False)
-    with (output / "agent-results.csv").open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=list(rows[0]))
-        writer.writeheader()
-        writer.writerows(rows)
-    (output / "transcripts.json").write_text(json.dumps(details, ensure_ascii=False, indent=2), encoding="utf-8")
-    summary = {config: {"runs": len(selected := [r for r in rows if r["config"] == config]),
-                       "passed": sum(r["passed"] for r in selected),
-                       "failures": dict(Counter(e for r in selected for e in r["errors"].split("|") if e))}
-               for config in ("A", "B")}
-    (output / "summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
+            for index, task in enumerate(tasks):
+                # Alternate paired configurations so B does not always run after A has consumed quota.
+                for config in (("A", "B") if (index + trial) % 2 else ("B", "A")):
+                    if (config, task["id"], trial) in completed:
+                        continue
+                    with tempfile.TemporaryDirectory(prefix="rafeeq-eval-") as folder:
+                        current = base.model_copy(update={"runtime": Path(folder), "configuration": config})
+                        store = Store(current.runtime)
+                        sid = store.new_session()
+                        if task.get("verify"):
+                            verify(store, sid, Verify(**task["verify"]))
+                        started = time.monotonic()
+                        reply = await run_agent(store, sid, task["prompt"], current, model)
+                        errors = grade(task, reply, store, sid)
+                        blocked = reply.stopped == "provider_error"
+                        row = {"config": config, "trial": trial, "task": task["id"], "category": task["category"],
+                               "passed": not errors, "outcome": "blocked_provider" if blocked else "failed_agent" if errors else "passed",
+                               "errors": "|".join(errors), "provider_error": reply.error_code or "",
+                               "seconds": round(time.monotonic() - started, 3), "model": current.model,
+                               "input_tokens": reply.usage.get("input_tokens", 0),
+                               "output_tokens": reply.usage.get("output_tokens", 0),
+                               "model_steps": reply.usage.get("model_steps", 0),
+                               "reserved_upper_usd": reply.usage.get("reserved_upper_usd", 0)}
+                        detail = {"config": config, "trial": trial, "task": task["id"],
+                                  "recorded_at": datetime.now(timezone.utc).isoformat(),
+                                  "reply": reply.model_dump(), "errors": errors}
+                        attempts.append({"row": row, "detail": detail})
+                        atomic_json(output / "checkpoint.json", attempts)
+                        export_results(output, attempts, len(tasks) * trials)
+                        print(config, trial, task["id"], row["outcome"], errors, flush=True)
+                        if blocked:
+                            print("STOPPED: provider rejected a request. Progress saved in", output)
+                            print("Check provider quota/authentication; 429 may be a minute or daily limit.")
+                            print("Resume the SAME experiment after recovery with --resume --output followed by that folder.")
+                            return 2
+    except (KeyboardInterrupt, asyncio.CancelledError):
+        print("Interrupted. Completed task results are saved in", output)
+        return 130
+    summary = export_results(output, attempts, len(tasks) * trials)
+    print("Results saved in", output)
     print(json.dumps(summary, indent=2))
-    return int(any(not row["passed"] for row in rows))
+    return int(any(entry["row"]["outcome"] == "failed_agent" for entry in attempts))
+
 
 
 def retrieval(tasks: list[dict], output: Path) -> int:
@@ -135,13 +205,25 @@ def main() -> None:
     parser.add_argument("mode", choices=("live", "retrieval"))
     parser.add_argument("--trials", type=int, default=1)
     parser.add_argument("--output", type=Path)
+    parser.add_argument("--resume", action="store_true")
+    parser.add_argument("--requests-per-minute", type=float, default=10)
+    parser.add_argument("--task-ids", nargs="+", help="Run a fixed subset for diagnosis; keep it identical when resuming")
     args = parser.parse_args()
     if args.trials < 1:
         parser.error("--trials must be positive")
     filename = "tasks.jsonl" if args.mode == "live" else "retrieval.jsonl"
     tasks = [json.loads(line) for line in (PROJECT / "evals" / filename).read_text(encoding="utf-8").splitlines() if line.strip()]
+    if args.task_ids:
+        wanted = set(args.task_ids)
+        tasks = [task for task in tasks if task["id"] in wanted]
+        if {task["id"] for task in tasks} != wanted:
+            parser.error("Unknown task ID")
+    if args.requests_per_minute <= 0:
+        parser.error("--requests-per-minute must be positive")
+    if args.resume and (args.output is None or args.mode != "live"):
+        parser.error("--resume requires live mode and --output pointing to an existing checkpoint")
     output = args.output or PROJECT / "evals/results" / (args.mode + "-" + datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%f"))
-    raise SystemExit(asyncio.run(live(tasks, output, args.trials)) if args.mode == "live" else retrieval(tasks, output))
+    raise SystemExit(asyncio.run(live(tasks, output, args.trials, resume=args.resume, requests_per_minute=args.requests_per_minute)) if args.mode == "live" else retrieval(tasks, output))
 
 
 if __name__ == "__main__":
