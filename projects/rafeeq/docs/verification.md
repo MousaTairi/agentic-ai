@@ -6,10 +6,19 @@ not proof of publication, GitHub Actions execution, or restoration in a new clou
 ## Completed checks
 
 - Frozen dependency installation with `uv sync --frozen`; dependency versions recorded in `uv.lock`.
-- 30 pytest cases covering all five fee types, schema rejection, privacy boundaries, scoped/expiring identity,
+- 49 pytest cases covering all five fee types, schema rejection, privacy boundaries, scoped/expiring identity,
   approval ownership, immutable proposals, replay/idempotence, database persistence, rescheduling, separate finance
   approval, real MCP subprocess round trips, public follow-up context, cost/step/context/deadline controls,
   rate limits, missing-provider handling, and HTTP security boundaries.
+- Agent review adds unrelated-request rejection before model calls; mandatory MCP grounding; registration,
+  application proposal/confirmation, human review and booking workflows on both A/B configurations; normalized
+  lowercase/Arabic references; verified profile recovery; expired identity privacy; accurate proposal-state
+  replies; provider-auth failure messages; event attendance rules and exemption boundaries.
+- Chromium exercised inline registration → application draft → citizen confirmation → separate licensing review
+  → real slot search/selection → booking confirmation in an isolated database. It also checked safe bold/list/table/
+  line-break rendering, inert HTML/XSS payloads, lowercase/Arabic numeral references, and mobile RTL without
+  JavaScript errors. That browser run used a **scripted model fixture with real MCP/database operations**;
+  it did not measure live model quality or claim provider connectivity.
 - Windows regression coverage reproduces the reported cp1252 decoding failure, then verifies explicit UTF-8
   prompt/policy loading and an Arabic scripted-model turn through the real MCP subprocess. Timezone loading
   is also tested without an OS timezone database. These checks ran on Linux with the Windows encoding emulated;
@@ -52,7 +61,7 @@ answer correctness are not evaluated by this retrieval benchmark.
 1. Set `OPENROUTER_API_KEY` securely in ignored `.env` or environment settings and restart the backend.
    Network settings must allow `openrouter.ai`; that requirement is saved in the cloud configuration draft.
 2. Pin `RAFEEQ_MODEL` to an available tool-calling model and verify the pricing assumptions in `.env`.
-3. Execute `uv run python -m rafeeq.evaluate live --trials 1` (20 agent tasks × two configurations).
+3. Execute `uv run python -m rafeeq.evaluate live --trials 1` (26 agent tasks × two configurations).
    This was attempted and exited 2 because the API key is absent. **Zero live-model tasks have run.**
 4. Review real A/B transcripts, export synthetic-only CSVs, write end-to-end failure analysis, and repeat important
    action/privacy cases if the provider budget permits. The free router is deliberately rejected for controlled evals.

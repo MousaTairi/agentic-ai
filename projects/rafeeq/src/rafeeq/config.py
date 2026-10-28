@@ -17,6 +17,7 @@ class Settings(BaseModel):
     runtime: Path = Field(default_factory=lambda: Path(os.getenv("RAFEEQ_RUNTIME", str(PROJECT / "runtime"))))
     api_key: str = Field(default_factory=lambda: os.getenv("OPENROUTER_API_KEY", ""), repr=False)
     officer_token: str = Field(default_factory=lambda: os.getenv("RAFEEQ_OFFICER_TOKEN", ""), repr=False)
+    reviewer_token: str = Field(default_factory=lambda: os.getenv("RAFEEQ_REVIEWER_TOKEN", ""), repr=False)
     model: str = Field(default_factory=lambda: os.getenv("RAFEEQ_MODEL", "openrouter/free"))
     max_steps: int = Field(default=8, ge=1, le=12)
     max_tokens: int = Field(default=900, ge=64, le=2000)

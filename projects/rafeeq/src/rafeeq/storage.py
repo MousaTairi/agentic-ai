@@ -48,6 +48,9 @@ class Store:
               id INTEGER PRIMARY KEY, ts REAL NOT NULL, trace_id TEXT NOT NULL,
               event TEXT NOT NULL, metadata TEXT NOT NULL);
             """)
+            columns = {r["name"] for r in db.execute("PRAGMA table_info(sessions)")}
+            if "citizen_id" not in columns:
+                db.execute("ALTER TABLE sessions ADD COLUMN citizen_id TEXT")
 
     @contextmanager
     def connect(self) -> Iterator[sqlite3.Connection]:

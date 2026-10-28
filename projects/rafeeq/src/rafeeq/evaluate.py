@@ -22,7 +22,7 @@ from .storage import Store
 def grade(task: dict, reply, store: Store, sid: str) -> list[str]:
     failures = []
     text = reply.reply.translate(str.maketrans("٠١٢٣٤٥٦٧٨٩", "0123456789")).replace(",", "").lower()
-    if reply.stopped != "completed":
+    if reply.stopped != task.get("expected_stop", "completed"):
         failures.append("execution:" + reply.stopped)
     for group in task.get("contains", []):
         if not any(term.lower().replace(",", "") in text for term in group):
@@ -36,6 +36,9 @@ def grade(task: dict, reply, store: Store, sid: str) -> list[str]:
     for tool in task.get("forbidden_tools", []):
         if tool in reply.tools:
             failures.append("unexpected_tool:" + tool)
+    for kind in task.get("ui_requests", []):
+        if not any(request["type"] == kind for request in reply.ui_requests):
+            failures.append("missing_chat_card:" + kind)
     if task.get("action"):
         matches = [a for a in reply.actions if a["tool"] == task["action"]]
         if not matches:

@@ -2,6 +2,7 @@
 const $ = id => document.getElementById(id);
 let language = 'en';
 try { language = localStorage.getItem('rafeeq-language') === 'ar' ? 'ar' : 'en'; } catch {}
+let pendingGoal = '';
 let actions = [], officerActions = [], health = null, verified = false, verificationTimer = null;
 const preview = location.protocol === 'file:' || new URLSearchParams(location.search).get('preview') === '1';
 const labels = (en, ar) => language === 'ar' ? ar : en;
@@ -9,6 +10,7 @@ const toolNames = {
   book_inspection: ['Inspection booking', 'حجز فحص'],
   reschedule_inspection: ['Reschedule inspection', 'تغيير موعد الفحص'],
   request_refund: ['Refund request', 'طلب استرداد'],
+  submit_application: ['Submit application', 'تقديم الطلب'],
 };
 const stateNames = {
   pending: ['Needs your confirmation', 'بانتظار تأكيدك'],
@@ -73,7 +75,9 @@ function message(text, role, data) {
   $('chat-welcome')?.remove();
   const article = element('article', 'message ' + role);
   if (role === 'assistant') article.append(element('span', 'message-avatar', 'ر'));
-  const bubble = element('div', 'bubble', text); bubble.dir = 'auto';
+  const bubble = element('div', 'bubble'); bubble.dir = 'auto';
+  if (role === 'assistant') bubble.append(renderSafeMarkdown(text));
+  else bubble.textContent = text;
   if (data) {
     const details = element('details', 'trace');
     details.append(element('summary', '', labels('View sources & activity', 'عرض المصادر والنشاط')));
@@ -100,7 +104,7 @@ function formatSlot(value) {
     {day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}).format(date);
 }
 function renderActions(items, target = 'actions', officer = false) {
-  const root = $(target); root.replaceChildren();
+  const root = typeof target === 'string' ? $(target) : target; root.replaceChildren();
   if (!officer) $('action-count').textContent = String(items.filter(a => a.status === 'pending').length);
   if (!items.length) {
     const empty = element('div', 'empty-actions');
@@ -124,10 +128,14 @@ function renderActions(items, target = 'actions', officer = false) {
       const item = element('div', 'action-field');
       item.append(element('span', '', label), element('strong', '', String(value))); fields.append(item);
     };
-    row(labels('Application', 'الطلب'), action.args?.permit_id);
+    row(labels('Application', 'الطلب'), action.result?.permit_id || action.args?.permit_id);
+    row(labels('Permit type', 'نوع التصريح'), action.args?.permit_type);
+    row(labels('Declared documents', 'المستندات المُقرّ بها'), action.args?.documents?.map(key => labels(...(documentLabels[key] || [key,key]))).join('، '));
+    row(labels('Missing documents', 'مستندات ناقصة'), action.result?.missing_documents?.map(key => labels(...(documentLabels[key] || [key,key]))).join('، '));
     row(labels('Appointment', 'الموعد'), formatSlot(action.result?.slot || action.args?.slot));
-    row(labels('Amount', 'المبلغ'), action.result?.amount_sar === undefined ? null :
-      new Intl.NumberFormat(language === 'ar' ? 'ar-SA' : 'en-GB').format(action.result.amount_sar) + labels(' SAR', ' ريال'));
+    const amount = action.result?.amount_sar ?? action.result?.fee_sar;
+    row(labels('Amount', 'المبلغ'), amount === undefined ? null :
+      new Intl.NumberFormat(language === 'ar' ? 'ar-SA' : 'en-GB').format(amount) + labels(' SAR', ' ريال'));
     row(labels('District', 'الحي'), action.result?.district);
     card.append(fields);
     if (status === 'awaiting_officer') card.append(element('p', 'action-note',
@@ -142,8 +150,16 @@ function renderActions(items, target = 'actions', officer = false) {
           try {
             const result = await api('/api/' + (officer ? 'officer/' : '') + 'actions/' + encodeURIComponent(action.id) + '/decision', 'POST', {approve}, officer);
             const state = stateNames[result.status] || [result.status, result.status];
-            message(labels(...name) + ': ' + labels(...state) + '.', 'assistant');
+            const reference = result.result?.permit_id;
+            message(labels(...name) + ': ' + labels(...state) + (reference ? ' · ' + reference : '') + '.', 'assistant');
+            if (reference && action.tool === 'submit_application') {
+              $('verify').elements.permit_id.value = reference;
+              verificationState(true, labels('Your new application is linked to this session.', 'تم ربط طلبك الجديد بهذه الجلسة.'));
+              message(labels('Application status: ', 'حالة الطلب: ') + result.result.status +
+                labels('. This is submission, not permit approval. A licensing officer must review it before eligible inspections.', '. هذا تقديم للطلب وليس موافقة على التصريح. يلزم مراجعته من الموظف المختص قبل الفحوصات المؤهلة.'), 'assistant');
+            }
             actions = await api('/api/actions'); renderActions(actions);
+            if (typeof target !== 'string') renderActions(actions, target, officer);
             if (officer) { officerActions = await api('/api/officer/actions','GET',undefined,true); renderActions(officerActions,'officer-actions',true); }
           } catch (error) { message(error.message, 'assistant'); buttons.querySelectorAll('button').forEach(b => { b.disabled = false; }); }
         };
@@ -173,19 +189,26 @@ $('verify').onsubmit = async event => {
   } catch (error) { verificationState(false, error.message); }
   finally { form.elements.last4.value = ''; form.elements.mobile.value = ''; button.disabled = false; }
 };
-$('chat').onsubmit = async event => {
-  event.preventDefault();
-  const text = $('message').value.trim();
+async function sendMessage(text, automatic = false) {
+  text = text.trim();
   if (!text || $('send').disabled) return;
+  if (!automatic) pendingGoal = text;
   message(text,'user'); $('message').value = ''; $('send').disabled = true; $('messages').setAttribute('aria-busy', 'true'); typing(true);
   try {
     const data = await api('/api/chat', 'POST', {message: text});
     typing(false); message(data.reply, 'assistant', data); actions = data.actions; renderActions(actions);
+    for (const request of data.ui_requests || []) renderChatRequest(request);
+    const pending = actions.filter(action => action.status === 'pending');
+    if (pending.length) {
+      const inline = element('div','inline-actions'); $('messages').append(inline);
+      renderActions(pending, inline); scrollMessages();
+    }
   } catch (error) {
     typing(false);
     message(error.name === 'TimeoutError' ? labels('This is taking longer than expected. Please try again.', 'استغرق الطلب وقتًا أطول من المتوقع. يرجى المحاولة مجددًا.') : error.message, 'assistant');
   } finally { typing(false); $('send').disabled = preview; $('messages').setAttribute('aria-busy', 'false'); $('message').focus(); }
-};
+}
+$('chat').onsubmit = event => { event.preventDefault(); sendMessage($('message').value); };
 $('message').onkeydown = event => { if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) { event.preventDefault(); $('chat').requestSubmit(); } };
 document.querySelectorAll('[data-question]').forEach(button => {
   button.onclick = () => {
@@ -216,7 +239,9 @@ $('reset').onclick = reset; $('new-chat').onclick = reset;
 $('load-officer').onclick = async () => {
   const button = $('load-officer'); button.disabled = true;
   try { officerActions = await api('/api/officer/actions','GET',undefined,true); renderActions(officerActions,'officer-actions',true); }
-  catch (error) { message(error.message,'assistant'); }
+  catch {
+    $('officer-actions').textContent = labels('This workspace requires a separate finance officer token. Citizen bookings and applications do not need this token.', 'تتطلب هذه المساحة رمزًا مستقلًا للموظف المالي. حجوزات المستفيد وطلباته لا تحتاج إلى هذا الرمز.');
+  }
   finally { button.disabled = false; }
 };
 async function init() {
@@ -224,6 +249,8 @@ async function init() {
   if (preview) { showPreviewNotice(); updateConnection(); $('send').disabled = true; return; }
   try {
     await api('/api/session','POST'); health = await api('/healthz'); updateConnection();
+    $('officer-panel').hidden = !health.officer_enabled;
+    if (health.reviewer_enabled) mountReviewerWorkspace();
     actions = await api('/api/actions'); renderActions(actions);
   } catch {
     connection('error', labels('Service unavailable', 'الخدمة غير متاحة'));
@@ -231,4 +258,7 @@ async function init() {
     $('preview-notice').textContent = labels('We couldn’t connect to Rafeeq. Make sure the service is running, then refresh this page.', 'تعذر الاتصال برفيق. تأكد من تشغيل الخدمة ثم حدّث الصفحة.');
   }
 }
+bindNormalization($('verify').elements.permit_id, true);
+bindNormalization($('verify').elements.last4);
+bindNormalization($('verify').elements.mobile);
 init();

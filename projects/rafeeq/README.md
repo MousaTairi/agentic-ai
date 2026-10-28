@@ -41,6 +41,28 @@ No API key is supplied with the project. The interface and local tools work with
 
 ## Try the demo
 
+For the full chat workflow, ask **“I want to apply for a food truck permit.”** Rafeeq retrieves policy evidence
+and opens a secure registration card inside chat. Use synthetic details only; identity fields are not sent to AI.
+Registration opens an inline application form. Select the type and district, enter fee inputs, and declare the
+documents you have. These are **demo declarations, not file uploads**. Review the fee and missing documents,
+then confirm the proposal. A synthetic application and simulated payment are recorded atomically.
+
+Complete declarations produce `submitted`; missing declarations produce `needs_info`. Submission does not
+approve a permit. For a new application to become eligible for inspection, a separate licensing officer must
+take it into review. Configure `RAFEEQ_REVIEWER_TOKEN` in your local `.env`, restart, then use **Licensing reviewer
+demo workspace** at the bottom of the page. Validate declarations and start review. This token must be separate
+from the finance token; the reviewer endpoint cannot approve/reject permits. Under-review FTR/EVT may have
+pre-approval inspections, while approved BLD/FTR have the inspections allowed by POL-05.
+
+Ask **“Book an inspection.”** Verification can happen inside a secure chat card. Rafeeq reads the recorded district,
+uses a default simulation date range, and retrieves actual slots. If a weak model only explains the process,
+the harness provides a slot-selection card. Confirm the resulting proposal in chat to persist the booking.
+Existing applicants can verify a reference to reconnect to their profile. No real account or money transfer is created.
+
+Unrelated requests, including sorting code and weather, are rejected before model calls. Supported replies are
+grounded by MCP policy retrieval. Markdown renders as safe DOM nodes; model HTML cannot execute. Lowercase
+references, Unicode hyphens and Arabic numerals are normalized in the browser and backend.
+
 1. Ask: “What is the fee for an illuminated 3 m² sign?” Expect a tool-computed 750 SAR and POL-02.
 2. Verify synthetic applicant `FTR-30311`, last four ID digits `6654`, mobile `0532236654` using the form.
 3. Ask: “Find inspection slots for FTR-30311 in Al-Rawdah on 4 November 2026 and propose 09:00.”
@@ -86,6 +108,9 @@ and [verification](docs/verification.md) for measured results and unresolved che
 | `search_policies` | MCP stdio | Read public policies | None |
 | `compute_fee` | MCP stdio | Calculate public fee | None |
 | `list_inspection_slots` | MCP stdio | Read public availability | None |
+| `start_registration`, `start_verification`, `start_application` | In-process | Open secure inline forms | Citizen submits form |
+| `my_applications` | In-process | Minimized owned references/status | Current identity verification |
+| `submit_application` | In-process | Propose application + simulated payment | Citizen confirmation |
 | `get_permit` | In-process | Minimized private read | Verified application scope |
 | `book_inspection` | In-process | Propose booking | Citizen confirmation |
 | `reschedule_inspection` | In-process | Propose reschedule | Citizen confirmation |
@@ -106,6 +131,13 @@ the server sets an opaque HttpOnly, SameSite=Strict cookie. HTTPS also enables S
 | `POST /api/session` | Start or resume a session |
 | `DELETE /api/session` | Remove session memory/verification and cancel unconfirmed actions |
 | `POST /api/verify` | `{permit_id, last4, mobile}`; never sent to AI provider |
+| `POST /api/register` | Synthetic profile fields + explicit consent; never sent to AI provider |
+| `GET /api/me` | Current citizen context, with application details hidden after verification expires |
+| `GET /api/application-options` | Supported document declarations and districts |
+| `POST /api/application-draft` | Prepare validated application proposal without submitting it |
+| `POST /api/inspection-proposal` | Prepare a selected-slot proposal without booking it |
+| `GET /api/reviewer/applications` | New application queue; separate reviewer token required |
+| `POST /api/reviewer/begin-review` | Human reviewer starts review; no permit approval |
 | `POST /api/chat` | `{message}` → reply, tools, action cards, stop reason, usage and trace ID |
 | `GET /api/actions` | Current session's actions |
 | `POST /api/actions/{id}/decision` | `{approve: true/false}` on immutable stored arguments |
@@ -127,7 +159,7 @@ uv run python -m rafeeq.evaluate live --trials 1
 # Use --trials 3 for repeated-run reliability if your API budget permits.
 ```
 
-The live suite has **20 tasks**, run on **two configurations**, using the same configured model.
+The live suite has **26 tasks**, run on **two configurations**, using the same configured model.
 Each task gets a fresh synthetic database. Graders assert tool calls, policy citations, content, privacy,
 approval states, and actual database effects. Some tasks give confirmation through the evaluator's simulated
 human; the model never gets that permission. Result CSVs, transcripts and root-cause summaries go to an ignored,
@@ -145,6 +177,10 @@ into `docs/results/` before final submission. Never publish raw transcripts cont
 - Security attack and defence evidence, privacy/PDPL discussion and limitations.
 - README, architecture, environment template, lockfile and slides; rehearse the eight-minute talk.
 - Test installation and demo from a clean clone. See [presentation outline](docs/presentation.md).
+
+See [SDAIA requirement coverage](docs/sdaia-coverage.md) for implementation evidence and outstanding submission
+work. Scripted workflow tests are not live-model intelligence scores. Provider failures now distinguish missing
+or rejected keys, credits, quota, and incompatible models without exposing provider bodies or credentials.
 
 ## Limitations
 

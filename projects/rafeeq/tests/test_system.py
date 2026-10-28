@@ -291,7 +291,8 @@ async def test_arabic_prompt_and_retrieval_with_windows_default_encoding(store, 
                                  Settings(runtime=store.runtime, max_cost=10), model)
         assert result.stopped == "completed"
         assert "صك الملكية" in result.reply
-        assert result.tools == ["search_policies"]
+        assert "search_policies" in result.tools
+        assert result.ui_requests == [{"type": "registration"}]
     finally:
         documents.cache_clear()
         index.cache_clear()

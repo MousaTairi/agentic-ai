@@ -10,8 +10,9 @@ from fastapi.staticfiles import StaticFiles
 
 from .agent import Model, run_agent
 from .config import Settings
-from .domain import decide, verify
-from .schemas import Chat, Decision, Reply, Verify
+from .domain import decide, propose, verify
+from .intake import application_options, begin_review, my_applications, propose_application, register
+from .schemas import Application, Booking, Chat, Decision, Permit, Register, Reply, Verify
 from .storage import Store
 
 
@@ -63,6 +64,10 @@ def create_app(settings: Settings | None = None, model: Model | None = None) -> 
         if not settings.officer_token or not secrets.compare_digest(x_officer_token, settings.officer_token):
             raise HTTPException(403, "Finance officer authorization required.")
 
+    def reviewer(x_reviewer_token: str = Header(default="")) -> None:
+        if not settings.reviewer_token or not secrets.compare_digest(x_reviewer_token, settings.reviewer_token):
+            raise HTTPException(403, "Licensing reviewer authorization required.")
+
     @app.get("/")
     def index():
         return FileResponse(web / "index.html")
@@ -76,10 +81,19 @@ def create_app(settings: Settings | None = None, model: Model | None = None) -> 
     def javascript():
         return FileResponse(web / "app.js", media_type="text/javascript")
 
+    @app.get("/markdown.js", include_in_schema=False)
+    def markdown_script():
+        return FileResponse(web / "markdown.js", media_type="text/javascript")
+
+    @app.get("/chat-forms.js", include_in_schema=False)
+    def forms_script():
+        return FileResponse(web / "chat-forms.js", media_type="text/javascript")
+
     @app.get("/healthz")
     def health():
         return {"ok": True, "ai_configured": bool(settings.api_key), "model": settings.model,
-                "simulation_date": "2026-11-01", "officer_enabled": bool(settings.officer_token)}
+                "simulation_date": "2026-11-01", "officer_enabled": bool(settings.officer_token),
+                "reviewer_enabled": bool(settings.reviewer_token)}
 
     @app.post("/api/session")
     def new_session(response: Response, request: Request):
@@ -107,6 +121,48 @@ def create_app(settings: Settings | None = None, model: Model | None = None) -> 
         store.rate_limit(sid)
         verify(store, sid, req)
         return {"ok": True, "expires_in_seconds": 900}
+
+    @app.get("/api/me")
+    def me(sid: str = Depends(session)):
+        return my_applications(store, sid)
+
+    @app.post("/api/register")
+    def register_citizen(req: Register, sid: str = Depends(session)):
+        store.rate_limit(sid)
+        result = register(store, sid, req)
+        store.event(store.trace_session(sid), "synthetic_profile_consent", consent=True)
+        return result
+
+    @app.get("/api/application-options")
+    def options(sid: str = Depends(session)):
+        return application_options()
+
+    @app.post("/api/application-draft")
+    async def draft(req: Application, sid: str = Depends(session)):
+        store.rate_limit(sid)
+        async with lock:
+            result = propose_application(store, sid, req)
+            store.event(result["action_id"], "application_proposed", status=result["status"])
+            return result
+
+    @app.post("/api/inspection-proposal")
+    async def inspection_proposal(req: Booking, sid: str = Depends(session)):
+        store.rate_limit(sid)
+        async with lock:
+            return propose(store, sid, "book_inspection", req.model_dump(mode="json"))
+
+    @app.get("/api/reviewer/applications", dependencies=[Depends(reviewer)])
+    def review_queue():
+        with store.connect() as db:
+            return [dict(r) for r in db.execute("SELECT permit_id,type,status,district,info_requested FROM permits"
+                                               " WHERE applicant_id LIKE 'DEMO-%' AND status IN ('submitted','needs_info')")]
+
+    @app.post("/api/reviewer/begin-review", dependencies=[Depends(reviewer)])
+    async def review(req: Permit):
+        async with lock:
+            result = begin_review(store, req.permit_id)
+            store.event(req.permit_id, "officer_started_review", status=result["status"])
+            return result
 
     @app.post("/api/chat", response_model=Reply)
     async def chat(req: Chat, sid: str = Depends(session)):

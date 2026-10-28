@@ -33,6 +33,14 @@ outstanding until an API key is configured.
 
 ## Additional controls
 
+- Unrelated coding/general requests are rejected before provider calls, including after an existing permit conversation.
+- Registration and identity verification are secure cards within chat. Identity/profile values go directly to local
+  endpoints, not LLM messages. Application documents are synthetic declarations; no real files or payments are processed.
+- Application submission requires an immutable citizen-confirmed proposal. A separate licensing-reviewer role starts
+  review, while the finance role handles high-value refunds. Neither role is an AI tool or a permit approval endpoint.
+- Agent replies cannot claim a proposed write completed: the harness reports its persisted pending state instead.
+- Markdown uses DOM nodes only. Bold, lists, tables, citations and line breaks render without executing model HTML.
+
 - Separate citizen confirmation and finance-officer authorization; immutable proposals, expirations and idempotence.
 - Pydantic schemas forbid extra fields and reject invalid/nonfinite fee inputs.
 - Opaque HttpOnly cookies, SameSite=Strict, same-origin checks, custom mutation header, CSP and escaped rendering.

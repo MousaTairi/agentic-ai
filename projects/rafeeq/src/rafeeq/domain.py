@@ -33,13 +33,16 @@ def verify(store: Store, sid: str, args: Verify) -> None:
     if session["failures"] >= 5:
         raise PermissionError("Verification locked for this session. Contact the demo administrator.")
     with store.connect() as db:
-        rows = db.execute("""SELECT a.national_id,a.mobile FROM permits p JOIN applicants a
+        rows = db.execute("""SELECT a.applicant_id,a.national_id,a.mobile FROM permits p JOIN applicants a
             ON a.applicant_id=p.applicant_id OR a.agent_for=p.applicant_id WHERE p.permit_id=?""",
                           (args.permit_id,)).fetchall()
-        ok = any(secrets.compare_digest(r["national_id"][-4:], args.last4)
-                 and secrets.compare_digest(mobile_digits(r["mobile"]), mobile_digits(args.mobile)) for r in rows)
+        matched = next((r for r in rows if secrets.compare_digest(r["national_id"][-4:], args.last4)
+                        and secrets.compare_digest(mobile_digits(r["mobile"]), mobile_digits(args.mobile))), None)
+        ok = matched is not None
         db.execute("UPDATE sessions SET verified=?,verified_until=?,failures=failures+? WHERE id=?",
                    (args.permit_id if ok else None, time.time() + 900 if ok else 0, int(not ok), sid))
+        if matched is not None:
+            db.execute("UPDATE sessions SET citizen_id=? WHERE id=?", (matched["applicant_id"], sid))
     if not ok:
         raise PermissionError("Verification failed. Check your details (POL-08).")
 
@@ -166,14 +169,20 @@ def decide(store: Store, sid: str | None, aid: str, approve: bool, officer: bool
         if a["expires"] < time.time():
             raise ValueError("Action expired. Request a fresh proposal.")
         args = json.loads(a["args"])
-        if not officer:
+        if not officer and a["tool"] != "submit_application":
             session = db.execute("SELECT * FROM sessions WHERE id=?", (sid,)).fetchone()
             if session["verified"] != args["permit_id"] or session["verified_until"] < time.time():
                 raise PermissionError("Verify this application again before confirming.")
         result = None
         status = "rejected"
         if approve:
-            if a["tool"] == "request_refund":
+            if a["tool"] == "submit_application":
+                if officer:
+                    raise PermissionError("Only the applicant can submit their application.")
+                from .intake import complete_application
+                result = complete_application(db, sid, args)
+                status = "completed"
+            elif a["tool"] == "request_refund":
                 amount = refund_amount(db, args)
                 preview = json.loads(a["result"] or "{}")
                 if preview.get("amount_sar") != amount:

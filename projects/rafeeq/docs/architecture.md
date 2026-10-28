@@ -25,7 +25,8 @@ Model API and officer credentials are removed from its environment, and dotenv l
 ## SQLite state
 
 - `sessions`: opaque random ID, bounded public history, expiration, verified permit scope and expiry,
-  failed-verification count, rate window/count.
+  failed-verification count, rate window/count and authenticated synthetic citizen reference. Existing databases
+  are migrated additively to add this reference without resetting records.
 - `actions`: random action ID, owner session, tool, canonical validated arguments, status, expiration, result.
 - `events`: timestamp, trace ID, event name, structural metadata. No raw messages, tool arguments or outputs.
 - Course tables: synthetic applicants, permits, payments, inspections and slots; refunds are simulated records.
@@ -49,8 +50,11 @@ the browser cannot replace slot or refund amount. Finance expiry is checked at d
 ## Data flow and minimization
 
 Verification form → backend comparison against synthetic records → application-scoped session flag.
+Inline registration card → local profile endpoint → inline application form → immutable submission proposal →
+citizen confirmation → synthetic application/payment records. Licensing review is a separate authorized endpoint,
+not an agent tool; submission never implies permit approval. Inspection proposals still require eligible status.
 The model never receives the form's mobile or ID digits. Model-driven lookup → scope check → selected fields only.
 Public chat → bounded SQLite history; private task replies → generic context placeholder rather than saved facts.
-The browser displays replies using `textContent`; it never executes model-supplied HTML or markdown.
+The browser renders a small Markdown subset into safe DOM nodes; arbitrary model HTML remains inert text.
 
 Use the existing checkout; no additional worktree is needed. Database processes must restart in fresh cloud tasks.
