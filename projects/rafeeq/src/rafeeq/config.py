@@ -19,7 +19,10 @@ class Settings(BaseModel):
     officer_token: str = Field(default_factory=lambda: os.getenv("RAFEEQ_OFFICER_TOKEN", ""), repr=False)
     reviewer_token: str = Field(default_factory=lambda: os.getenv("RAFEEQ_REVIEWER_TOKEN", ""), repr=False)
     model: str = Field(default_factory=lambda: os.getenv("RAFEEQ_MODEL", "nvidia/nemotron-3.5-lightning:free"))
-    fallback_model: str = Field(default_factory=lambda: os.getenv("RAFEEQ_FALLBACK_MODEL", ""), validate_default=True)
+    fallback_model: str = Field(
+        default_factory=lambda: os.getenv("RAFEEQ_FALLBACK_MODEL", "google/gemma-4-31b-it:free"),
+        validate_default=True,
+    )
 
     @field_validator("fallback_model")
     @classmethod

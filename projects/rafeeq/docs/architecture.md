@@ -65,7 +65,8 @@ processes need to be started again when moving to a new machine.
 
 ## Model availability
 
-The primary model is fixed by `RAFEEQ_MODEL`. An optional `RAFEEQ_FALLBACK_MODEL` names one specific
+The primary model is fixed by `RAFEEQ_MODEL`. `RAFEEQ_FALLBACK_MODEL` defaults to
+`google/gemma-4-31b-it:free`, the course's documented free tool-calling model. A blank value disables the
 backup; no automatic router is accepted for that setting. Chat makes at most two HTTP attempts per
 model step. The backup is eligible on transport failures, 404/429, and 500/502/503/504 responses.
 Authentication, credit, and access errors stop without switching. Without a backup, only the existing

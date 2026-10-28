@@ -70,8 +70,16 @@ the interface without a working provider connection. Chat and verification still
 
 `RAFEEQ_MODEL` selects a specific primary model. The default is
 `nvidia/nemotron-3.5-lightning:free`; Rafeeq does not select random models by default.
-For an optional backup, set `RAFEEQ_FALLBACK_MODEL` in `.env` to another specific OpenRouter model ID
-with tool-calling support, then restart the server. Leave it blank to keep a single model.
+The named backup is Google Gemma 4 31B, using the free tool-calling model ID documented in the
+course repository. Current provider availability still needs a live check.
+
+```dotenv
+RAFEEQ_MODEL=nvidia/nemotron-3.5-lightning:free
+RAFEEQ_FALLBACK_MODEL=google/gemma-4-31b-it:free
+```
+
+For an existing `.env`, update the backup line above and restart the server. An existing blank
+`RAFEEQ_FALLBACK_MODEL=` disables switching; leaving that line out uses the default backup.
 Automatic router IDs such as `openrouter/free` are not accepted as backups.
 
 Chat can make one backup attempt if the primary has a connection/timeout failure, is unavailable,

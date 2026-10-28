@@ -124,7 +124,7 @@ async def test_429_is_not_retried_immediately(monkeypatch):
     original = httpx.AsyncClient
     monkeypatch.setattr(httpx, "AsyncClient", lambda **kwargs: original(transport=transport, **kwargs))
     with pytest.raises(ProviderFailure) as error:
-        await OpenRouter().complete([], Settings(api_key="test-fixture"))
+        await OpenRouter().complete([], Settings(api_key="test-fixture", fallback_model=""))
     assert error.value.code == "rate_limit" and len(hits) == 1
 
 
