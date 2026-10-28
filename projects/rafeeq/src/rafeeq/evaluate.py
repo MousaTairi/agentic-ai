@@ -14,7 +14,7 @@ from pathlib import Path
 from .agent import OpenRouter, run_agent
 from .config import PROJECT, Settings
 from .domain import decide, verify
-from .evaluation_reporting import canonical_text, contains_expected, summary_for
+from .evaluation_reporting import canonical_text, contains_expected, markdown_report, summary_for
 from .retrieval import search
 from .schemas import Verify
 from .storage import Store
@@ -100,6 +100,11 @@ def export_results(output: Path, attempts: list[dict], planned: int) -> dict:
     atomic_json(output / "transcripts.json", [entry["detail"] for entry in selected])
     summary = summary_for(rows, planned)
     atomic_json(output / "summary.json", summary)
+    manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
+    report = output / "analysis.md"
+    temporary = report.with_suffix(".md.tmp")
+    temporary.write_text(markdown_report(rows, summary, manifest), encoding="utf-8")
+    temporary.replace(report)
     return summary
 
 

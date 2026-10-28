@@ -1,7 +1,9 @@
 # SDAIA capstone coverage — Track 1, Rafeeq in production
 
 This maps the implementation to the course's minimum requirements and rubric. It does not claim that an
-unexecuted live-model evaluation, native Windows CI job, production deployment, or presentation is complete.
+unexecuted live-model evaluation, native Windows CI job or production deployment is complete.
+The instructor has specified GitHub-only submission, with the project README serving as the presentation;
+separate slides and an oral presentation are not required.
 
 ## Minimum requirements
 
@@ -36,11 +38,11 @@ under review may have pre-approval inspections. Reviewer and finance roles use s
 
 | Criterion | Weight | Prepared evidence |
 |---|---:|---|
-| Working system and live demo | 25% | API, bilingual chat, real MCP/database, in-chat intake and confirmation. Rehearse with the actual configured model and record a backup |
+| Working system and live demo | 25% | API, bilingual chat, real MCP/database, in-chat intake and confirmation. Post-fix live workflow evidence remains to be collected with the configured model |
 | Context and harness engineering | 25% | Mandatory grounding, safe task memory, strict schemas, scope gate, role gates, persisted proposals, budgets |
 | Evaluation and error analysis | 20% | First 52-outcome live run and explicit failure analysis available. Pacing/stop/resume prevent misleading quota-driven comparisons; complete post-fix paired results are still required |
 | Security, governance, operability | 20% | Structural audit events, no secret logging, immutable approvals, reviewer/finance separation, offline attacks and browser rendering checks; synthetic-only/PDPL limitations documented |
-| Presentation and reproducibility | 10% | README, `.env.example`, lockfile, architecture and presentation outline. Fresh public-clone installation and three critical API/MCP workflow checks passed on Linux; final slides, Windows rehearsal and live-demo recording remain required |
+| Presentation and reproducibility | 10% | README is the presentation; `.env.example`, lockfile, architecture and verification guide are included. Linux checks passed; user confirmed clean Windows installation and updated evaluator help. Live evaluation remains quota-blocked |
 
 ## Course topics versus capstone requirements
 
@@ -48,7 +50,7 @@ The learning outcomes describe the whole course. The stated capstone minimum doe
 library, every API shape, multiple agents or LangGraph. This implementation uses a native Chat Completions loop
 with OpenRouter, MCP, Pydantic, FastAPI and SQLite. It has persisted human-gated workflow states and structural
 audit events grouped by trace ID. It does not claim Responses/Messages adapters, an SDK harness, A2A, a LangGraph
-implementation or OpenTelemetry span export. Explain these scope decisions in the presentation; additional
+implementation or OpenTelemetry span export. These scope decisions are explained in the README; additional
 instructor-specific requirements would need separate implementation and validation.
 
 ## Run locally on Windows

@@ -3,18 +3,71 @@
 A bilingual permit assistant for citizens of fictional Madar Municipal Services.
 
 **SDAIA capstone track:** 1 — Rafeeq in production. This is an educational service using synthetic records;
-it does not issue real permits, send emails, or transfer money. Team: fill in your name(s) before submission.
+it does not issue real permits, send emails, or transfer money.
+
+**Submission format:** the instructor has specified a GitHub link, with this README serving as the presentation.
+Separate slides and an oral presentation are not required for this submission.
 
 ![Rafeeq citizen portal](docs/interface-desktop.png)
 
+## Project and assessment evidence
+
+Rafeeq helps citizens understand five permit types (BLD, REN, SGN, FTR, EVT), register a synthetic profile,
+prepare applications, check their own records, propose inspections, understand appeals and request refunds.
+The problem is reliable bilingual service delivery: answers need policy evidence, calculated fees and actual
+record state, while changes require consent. Appeals are guidance/drafting; Rafeeq cannot lodge or decide them.
+
+| Assessment criterion | Evidence in this repository | Current limitation |
+|---|---|---|
+| Working system (25%) | [Citizen workflow below](#try-the-demo), API and real MCP tools; automated registration-to-booking tests | Post-fix live-model reliability remains unmeasured |
+| Context/harness (25%) | [Context specification](AGENTS.md), [architecture](docs/architecture.md), retrieval, bounded memory, typed tools, permissions and budgets | Bounded history drops older public turns; no dynamic Agent Skills loader |
+| Evaluation (20%) | [26 tasks](evals/tasks.jsonl), automatic content/tool/database graders, A/B retrieval configurations, [baseline error analysis](docs/results/first-live-run-review.md) | No complete post-fix live A/B comparison yet |
+| Security/governance/operability (20%) | [Trifecta, attack and defence](docs/security.md), scoped private reads, confirmations, separate officer roles and audit events | Offline attack evidence is not a live-model injection result; synthetic demonstration only |
+| README/reproducibility (10%) | This README, frozen lockfile, Windows commands, [verification evidence](docs/verification.md), Linux/Windows CI configuration | Native Windows installation/help confirmed by user; native Windows full test-suite result not supplied |
+
+**Latest local checks:** 65 tests and Ruff passed on Linux, including real MCP/database workflows
+and report/checkpoint regressions. The offline attack fixture was blocked by the guarded lookup and tool allowlist.
+These checks do not measure live-model intelligence.
+
+**Measured results:** the offline 20-query retrieval benchmark scores A 15/20 top-1 and 18/20 top-3;
+B 18/20 top-1 and 19/20 top-3. A uses word TF-IDF; B adds character n-grams, holding the corpus constant.
+These are retrieval scores, not end-to-end agent scores. The earlier live run scored A 8/26 and B 3/26,
+with 30 provider blocks. A format-only regrade changes A to 14/26; it is not a fresh run.
+The updated Windows diagnostic was stopped on its first case by `rate_limit`, leaving all eight diagnostic
+outcomes either blocked or unrun. There is no valid model-quality winner from those live attempts.
+
+The project deliberately uses one native tool-calling loop. MCP is the tool transport; SQLite holds durable
+state; Python enforces permissions. Multiple agents, LangGraph and dynamic skill loading are not necessary
+for the stated capstone minimum. A model proposes actions; only backend-authorized human decisions execute them.
+
 ## Run
+
+**Windows / PowerShell (recommended for this submission):** open a terminal in `projects/rafeeq`
+inside the complete repository, not the repository root. Preserve any existing `.env` and `runtime/`.
+
+```powershell
+py -m uv sync --frozen --python 3.12
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+# Edit .env securely: set OPENROUTER_API_KEY and RAFEEQ_MODEL.
+# Current experiment model: nvidia/nemotron-3.5-lightning:free
+py -m uv run python -m rafeeq.evaluate --help
+py -m uv run uvicorn rafeeq.api:create_app --factory --host 127.0.0.1 --port 8000
+```
+
+The evaluator help must list `--task-ids`, `--requests-per-minute` and `--resume`.
+If `rafeeq.evaluation_reporting` is missing, the source copy is incomplete: extract a full repository ZIP
+into a new folder and copy your private `.env`/runtime there. Do not merge individual downloaded source files
+or copy an old `.venv`. A ZIP must include `labs/prepare_data.py` and `labs/data/policies/` as well as this project.
+Use the new folder in VS Code and reinstall with the frozen command above.
+
+**Linux/macOS:**
 
 From a clone of **this entire course fork**, with Python 3.12 and [uv](https://docs.astral.sh/uv/):
 
 ```bash
 cd projects/rafeeq
 uv sync --frozen
-cp .env.example .env  # first run only; preserve an existing .env
+if [ ! -f .env ]; then cp .env.example .env; fi
 # Edit .env locally: set OPENROUTER_API_KEY and choose RAFEEQ_MODEL.
 uv run uvicorn rafeeq.api:create_app --factory --host 127.0.0.1 --port 8000
 ```
@@ -29,7 +82,7 @@ Free-provider model names, availability and quotas change; verify them in your O
 
 **Windows:** bilingual files and MCP communication explicitly use UTF-8. The `tzdata` dependency supplies the
 Riyadh timezone when no system timezone database exists. If an older version shows a `'charmap' codec` error,
-update the project, run `python -m uv sync --frozen`, and restart the server. Preserve your existing `.env`.
+update the project, run `py -m uv sync --frozen --python 3.12`, and restart the server. Preserve your existing `.env`.
 
 For the finance-officer demo, generate a separate random token locally, place it in `RAFEEQ_OFFICER_TOKEN`,
 restart the server, and enter it in the footer's officer panel. It is not the AI provider key.
@@ -163,7 +216,8 @@ The live suite has **26 tasks**, run on **two configurations**, using the same c
 Each task gets a fresh synthetic database. Graders assert tool calls, policy citations, content, privacy,
 approval states, and actual database effects. Some tasks give confirmation through the evaluator's simulated
 human; the model never gets that permission. Result CSVs, transcripts and root-cause summaries go to an ignored,
-timestamped `evals/results/` directory. A failing task exits nonzero. A missing key or unpinned free router exits 2.
+timestamped `evals/results/` directory. Each saved outcome also refreshes `analysis.md`, an aggregate
+coverage/error report that excludes raw prompts and replies. Its grader categories require manual root-cause review. A failing task exits nonzero. A missing key or unpinned free router exits 2.
 These graders are starting checks: manually review Arabic fluency, citation support and misleading claims as well.
 
 The separate 20-query offline retrieval benchmark is **not** an end-to-end agent score. Do not substitute its
@@ -198,17 +252,35 @@ See [the first submitted live-run analysis](docs/results/first-live-run-review.m
 citation grading errors, real workflow failures and the HTTP 429 coverage problem. The format-only regrade is
 labelled separately from new model results; patched agent performance still needs a fresh live run.
 
-## Submission checklist
+## GitHub-only submission checklist
 
-- Live AI demo with 3+ tools, MCP and a visible approval; record a backup video.
-- Real-model A/B evaluation CSVs, failure analysis and pinned model/date; repeat key cases if budget allows.
-- Security attack and defence evidence, privacy/PDPL discussion and limitations.
-- README, architecture, environment template, lockfile and slides; rehearse the eight-minute talk.
-- Test installation and demo from a clean clone. See [presentation outline](docs/presentation.md).
+The instructor's GitHub-only submission instructions take precedence over the upstream course's slides/talk
+outline. This README is the presentation. The technical evaluation and security requirements still apply.
 
-See [SDAIA requirement coverage](docs/sdaia-coverage.md) for implementation evidence and outstanding submission
-work. Scripted workflow tests are not live-model intelligence scores. Provider failures now distinguish missing
-or rejected keys, credits, quota, and incompatible models without exposing provider bodies or credentials.
+- Read the [requirement mapping](docs/sdaia-coverage.md), architecture and security note linked above.
+- Run the local checks below; retain the real results rather than an estimated project score.
+- Complete the four-task diagnostic, resolve actual failures, then run all 26 tasks on A/B with the same pinned model.
+- Review `analysis.md`, `summary.json`, `agent-results.csv` and local transcripts. Add observed causes and fixes;
+  do not count provider blocks as agent failures or describe partial runs as completed comparisons.
+- Publish reviewed synthetic-only evaluation CSVs, aggregate report and written root-cause analysis under
+  `docs/results/`. Never commit `.env`, runtime databases, raw transcripts, or checkpoint files.
+- Include live privacy/approval attack evidence after provider access recovers. The offline defence is already documented.
+
+Windows checks and full evaluation (from `projects/rafeeq`, after the diagnostic):
+
+```powershell
+py -m uv run ruff check .
+py -m uv run pytest -q
+py -m uv run python -m rafeeq.redteam
+py -m uv run python -m rafeeq.evaluate retrieval
+$env:RAFEEQ_MODEL = "nvidia/nemotron-3.5-lightning:free"
+py -m uv run python -m rafeeq.evaluate live --trials 1 --requests-per-minute 10
+```
+
+A model/source change starts a new experiment; do not resume an older checkpoint after updating source.
+A 429 does not establish an invalid API key. Check current OpenRouter quota before retrying; pacing cannot
+restore an exhausted allowance. Do not launch the full evaluation while the small diagnostic remains blocked.
+See the [submission guide](docs/presentation.md) for the README evidence-review order.
 
 ## Limitations
 

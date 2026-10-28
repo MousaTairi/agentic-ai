@@ -82,11 +82,41 @@ safe tool-validation diagnostics. Original uploads were not overwritten or publi
    the format-only regrade as a model rerun.
 4. Review real A/B transcripts, export synthetic-only CSVs, write end-to-end failure analysis, and repeat important
    action/privacy cases if the provider budget permits. The free router is deliberately rejected for controlled evals.
-5. Execute the live prompt-injection experiment and record a bilingual live demo plus a backup video.
+5. Execute the live prompt-injection experiment and retain reviewed bilingual workflow evidence.
+   A video is optional supporting evidence for this GitHub-only submission.
 6. Complete an accessibility audit, a native Windows rehearsal, and verify the new CI workflow on GitHub.
    Fresh-clone installation and critical API/MCP checks on Linux passed as recorded above.
    Desktop/mobile/RTL browser rendering was visually inspected; a full accessibility audit remains outstanding.
-7. Add team names and prepare final slides using the presentation outline.
+7. Submit the GitHub link with the README as presentation, following the instructor's explicit instructions.
+   Slides and an oral presentation are not required. Review all linked evidence before submission.
 
 The environment draft saves installation/start instructions and the OpenRouter secret/destination requirement;
 saving does not inject a key, apply network changes, publish a snapshot, or push the code to GitHub.
+
+## Latest user-reported Windows diagnostic
+
+A complete ZIP pinned to `1be0aab0520d487da1687db9d0cf04716f0b9d95` installed successfully with
+Python 3.12.16. The evaluator help exposed all new flags, fixing an earlier incomplete source copy that
+lacked `evaluation_reporting.py`. The user confirmed that a key was present and the model was pinned to
+`nvidia/nemotron-3.5-lightning:free`; no key value was shared.
+The diagnostic's first `fee-sign-en` case on A stopped as `blocked_provider` / `rate_limit`.
+The remaining seven cases did not run. No agent-quality conclusion can be drawn, and this is not a
+native Windows full-suite pass. The local results remain on the user's machine; only terminal evidence
+was reviewed. Do not overwrite that checkpoint or resume it with changed source.
+
+## GitHub-only submission update validation
+
+The README now serves as the presentation under the instructor's instructions. No slides or oral talk
+are claimed as required. The evaluator writes aggregate `analysis.md` after every saved outcome,
+including interrupted/provider-blocked runs and resumed runs. It separates genuine grader failures
+from provider blocks, exposes missing coverage, identifies live versus scripted execution and omits
+raw prompts/replies. Categories are diagnostic signals, not an automatic causal explanation.
+
+Validation in this Linux cloud instance: **65 pytest cases passed**, Ruff passed, the offline guarded
+lookup and unavailable egress-tool defence passed, and the retrieval benchmark reproduced A 15/20
+(top-1), 18/20 (top-3), B 18/20 (top-1), 19/20 (top-3). One upstream TestClient deprecation warning
+remains nonfailing. No `.env` or runtime data was modified. No new live-provider calls were made:
+this instance has no configured API key, while the user's separate Windows run was rate-limited.
+Tests cover aggregate report privacy, incomplete coverage and report refresh after checkpoint resume.
+Changes to evaluator source change the experiment fingerprint; start a new experiment on the updated
+source rather than resuming the old Windows checkpoint. Keep the old folder as availability evidence.

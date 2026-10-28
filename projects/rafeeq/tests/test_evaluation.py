@@ -10,7 +10,7 @@ from rafeeq import evaluate
 from rafeeq.agent import OpenRouter, ProviderFailure, bridge, dispatch, run_agent
 from rafeeq.config import Settings
 from rafeeq.domain import verify
-from rafeeq.evaluation_reporting import canonical_text, contains_expected, summary_for
+from rafeeq.evaluation_reporting import canonical_text, contains_expected, markdown_report, summary_for
 from rafeeq.schemas import Reply, Verify
 from rafeeq.scope import intent
 from rafeeq.storage import Store
@@ -95,6 +95,9 @@ async def test_rate_limit_stops_and_checkpoint_resumes_without_repeating_complet
     summary = json.loads((output / "summary.json").read_text(encoding="utf-8"))
     assert not summary["comparison"]["complete"]
     assert summary["B"]["blocked_provider"] == 1 and summary["B"]["failed_agent"] == 0
+    report = (output / "analysis.md").read_text(encoding="utf-8")
+    assert "INCOMPLETE" in report and "rate_limit" in report
+    assert "Run kind: scripted_test_fixture" in report
 
     async def ready_agent(store, sid, prompt, settings, model):
         calls.append(settings.configuration)
@@ -107,6 +110,8 @@ async def test_rate_limit_stops_and_checkpoint_resumes_without_repeating_complet
     assert len(after) == 5 and after[1]["row"]["outcome"] == "blocked_provider"
     summary = json.loads((output / "summary.json").read_text(encoding="utf-8"))
     assert summary["comparison"]["complete"] and summary["comparison"]["paired_model_task_runs"] == 2
+    report = (output / "analysis.md").read_text(encoding="utf-8")
+    assert "INCOMPLETE" not in report and "No selected outcome is provider-blocked" in report
     with pytest.raises(ValueError, match="different model"):
         await evaluate.live(tasks, output, 1, settings=settings.model_copy(update={"model": "changed"}),
                             provider=object(), resume=True)
@@ -130,6 +135,21 @@ def test_incomplete_comparison_and_model_coverage_are_explicit():
     assert summary["B"]["blocked_provider"] == 1
     assert summary["B"]["unrun"] == 1 and summary["B"]["failed_agent"] == 0
     assert not summary["comparison"]["complete"] and summary["comparison"]["paired_model_task_runs"] == 0
+
+
+def test_report_separates_provider_blocks_from_agent_errors_and_omits_raw_data():
+    rows = [
+        {"config": "A", "trial": 1, "task": "one", "passed": False, "outcome": "failed_agent",
+         "errors": "missing_tool:compute_fee", "model_steps": 1, "reply": "PRIVATE SENTINEL"},
+        {"config": "B", "trial": 1, "task": "one", "passed": False, "outcome": "blocked_provider",
+         "errors": "execution:provider_error", "provider_error": "rate_limit", "model_steps": 0},
+    ]
+    report = markdown_report(rows, summary_for(rows, 2), {
+        "run_kind": "live_provider", "model": "test-model", "trials": 1, "source_sha256": "abc"})
+    assert "INCOMPLETE" in report and "missing_tool:compute_fee" in report and "rate_limit" in report
+    assert "PRIVATE SENTINEL" not in report and "execution:provider_error" not in report
+    assert "| A | 0 | 1 | 0 | 1 | 2 |" in report
+    assert "| B | 0 | 0 | 1 | 1 | 2 |" in report
 
 
 async def test_invalid_booking_arguments_are_diagnosable_and_offer_slot_card(tmp_path):
