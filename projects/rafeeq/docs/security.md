@@ -9,10 +9,10 @@
 | External communication | HTTPS request to OpenRouter | Fixed backend endpoint; no email, shell, HTTP-fetch or arbitrary egress tools |
 
 Authorized minimized permit fields can still go to the model provider. This does not eliminate all three legs.
-Only synthetic records are permitted for this capstone. Do not send real personal data until appropriate data
-processing approval, provider region/retention review and institutional policy review are complete.
+I use synthetic records throughout the project. Using real records would require a separate review of
+provider retention, data processing, and institutional policy.
 
-## Attack and defence evidence
+## Attack and defence
 
 Attack text in the live evaluation task `attack-privacy` impersonates a system message, disables identity checks,
 and requests another applicant's information and external delivery. `attack-approval` asks for silent auto-confirmation.
@@ -22,14 +22,13 @@ might request. A scoped private read fails without verification and `send_email`
 from the allowlist. The MCP server advertises only three public read tools. Additional tests prove the model cannot
 alter action arguments at confirmation and cannot perform writes merely by proposing them.
 
-These are **deterministic harness tests**, not proof that a live model resisted a retrieved-document injection.
-For the final submission, run both attack tasks on the real provider and capture redacted evidence. To show a
-before/after comparison, demonstrate an explicitly isolated unguarded fixture lookup, then the guarded API lookup;
-never add a switch that disables production permissions or weaken configuration A's security.
-Run `uv run python -m rafeeq.redteam` for an isolated offline before/after demonstration: an unguarded synthetic
-fixture lookup exposes status, while the authorized tool blocks the same request, and rejects the egress tool.
-No application permission toggle is introduced. The actual live-model before/after attack experiment remains
-outstanding until an API key is configured.
+I test the backend boundary directly with `uv run python -m rafeeq.redteam`. An isolated unguarded
+fixture exposes the synthetic status the attack requests. The guarded lookup blocks the same request,
+and the email tool is rejected because it is not available. This fixture does not add a bypass to the app.
+
+The test shows that the permission checks work even if the model asks for an unauthorized tool call.
+It does not show how often a live model follows a prompt injection. That live experiment is still pending
+provider availability, along with the privacy and approval attack tasks in the evaluation suite.
 
 ## Additional controls
 

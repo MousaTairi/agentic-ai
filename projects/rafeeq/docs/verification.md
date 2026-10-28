@@ -1,122 +1,101 @@
-# Verification evidence
+# Tests and results
 
-Validated in the cloud workspace on 28 October 2026 with Python 3.12.14. This is current-instance validation,
-not proof of publication, GitHub Actions execution, or restoration in a new cloud task.
+The latest Linux validation on 28 October 2026 passed **65 pytest cases** and Ruff with Python 3.12.14.
+The offline attack test and retrieval benchmark also passed their checks. Live-model testing is still
+limited by provider quota.
 
-## Completed checks
+## Automated checks
 
-- Fresh public-clone check of commit `7c13d69`: `uv sync --frozen --python 3.12` installed successfully in a new
-  directory and environment. Three critical tests passed: both A/B scripted registration-to-booking workflows
-  with real MCP/database operations, plus API startup/assets/security checks. The published clone contains
-  `intake.py`, `scope.py`, `chat-forms.js` and `markdown.js`. This checks reproducibility on Linux, not native Windows
-  or a live AI provider.
+The tests cover:
 
-- Frozen dependency installation with `uv sync --frozen`; dependency versions recorded in `uv.lock`.
-- 64 pytest cases covering all five fee types, schema rejection, privacy boundaries, scoped/expiring identity,
-  approval ownership, immutable proposals, replay/idempotence, database persistence, rescheduling, separate finance
-  approval, real MCP subprocess round trips, public follow-up context, cost/step/context/deadline controls,
-  rate limits, missing-provider handling, and HTTP security boundaries.
-- Agent review adds unrelated-request rejection before model calls; mandatory MCP grounding; registration,
-  application proposal/confirmation, human review and booking workflows on both A/B configurations; normalized
-  lowercase/Arabic references; verified profile recovery; expired identity privacy; accurate proposal-state
-  replies; provider-auth failure messages; event attendance rules and exemption boundaries.
-- Chromium exercised inline registration → application draft → citizen confirmation → separate licensing review
-  → real slot search/selection → booking confirmation in an isolated database. It also checked safe bold/list/table/
-  line-break rendering, inert HTML/XSS payloads, lowercase/Arabic numeral references, and mobile RTL without
-  JavaScript errors. That browser run used a **scripted model fixture with real MCP/database operations**;
-  it did not measure live model quality or claim provider connectivity.
-- Windows regression coverage reproduces the reported cp1252 decoding failure, then verifies explicit UTF-8
-  prompt/policy loading and an Arabic scripted-model turn through the real MCP subprocess. Timezone loading
-  is also tested without an OS timezone database. These checks ran on Linux with the Windows encoding emulated;
-  native Windows execution is covered by the new CI matrix, whose outcome has not been verified here.
-- Ruff checks and JavaScript syntax check (`node --check src/rafeeq/web/app.js`).
-- Redesigned interface checked in Chromium at desktop, 390px phone, 768px tablet and 1024px widths,
-  including Arabic RTL, service prompt shortcuts, real form verification, clearing sensitive form fields,
-  and explicit preview mode. No JavaScript errors, failed asset requests or horizontal overflow were observed.
-  Relative CSS/JS routes and content types are covered by the API boundary test. Direct `file:` navigation is
-  blocked by the managed browser policy, so preview behavior was checked using `?preview=1` on the service.
-- Actual local HTTP smoke: HTML 200, health 200, session 200, verification 200, missing-key chat returns a
-  structured `provider_error`, and unauthorized officer access returns 403. No AI answer was produced.
-- Offline attack/defence demonstration (`python -m rafeeq.redteam`): isolated unguarded fixture read discloses
-  a status; guarded lookup and unavailable egress tool are blocked. This simulates tool calls, not model reasoning.
+- Fees for all five permit types, strict schemas, and invalid input.
+- Registration, application proposals, confirmation, licensing review, and booking on A and B.
+- Scoped and expiring identity verification, private-record access, and redaction.
+- Proposal ownership, expiry, immutable arguments, repeat confirmations, and persisted database effects.
+- Rescheduling, refunds, and the separate finance approval gate.
+- Real MCP subprocess calls, policy retrieval, and public conversation history.
+- Context, step, cost, and deadline limits; session rate limits; missing-provider responses.
+- HTTP security boundaries, safe tool diagnostics, Unicode grading, provider blocks, checkpoints, and resume.
+- Aggregate reports that omit raw replies and separate agent errors from provider availability.
 
-One nonfailing upstream warning remains: Starlette deprecates its current httpx TestClient integration.
-The integration tests executed and passed; this warning does not disable them.
+There is one nonfailing warning from Starlette's deprecated httpx TestClient integration.
 
-## Measured offline A/B retrieval
+From `projects/rafeeq` on Windows:
 
-20 manually labelled bilingual queries, ten policy topics, identical corpus and queries for A and B.
-See [per-query CSV](results/retrieval.csv).
+```powershell
+py -m uv sync --frozen --python 3.12
+py -m uv run pytest -q
+py -m uv run ruff check .
+py -m uv run python -m rafeeq.redteam
+py -m uv run python -m rafeeq.evaluate retrieval
+```
 
-| Configuration | Mechanism | Top-1 | Top-3 |
-|---|---|---:|---:|
-| A | Word TF-IDF | 15/20 (75%) | 18/20 (90%) |
-| B | Word + character TF-IDF | 18/20 (90%) | 19/20 (95%) |
+Use `uv run` instead of `py -m uv run` on Linux/macOS.
 
-**Error analysis:** A misses the expected policy in its top three for `permit-documents-ar` and `violations-ar`.
-B resolves the violations query but still misses `permit-documents-ar`. Arabic morphology and overlapping
-document vocabulary remain a retrieval weakness. This small hand-labelled sample does not establish statistical
-significance or broad robustness. Next compare Arabic normalization/segmentation on a held-out query set;
-do not tune the reported benchmark and report it as an independent result.
+## Installation and browser checks
 
-These are **retrieval results only**, not live-agent task success rates. The model, approval workflows, and bilingual
-answer correctness are not evaluated by this retrieval benchmark.
+A fresh public clone of `7c13d69` installed with the frozen lockfile on Linux. Both scripted A/B
+registration-to-booking workflows and the API startup/assets/security test passed in that copy.
 
-## Outstanding before capstone submission
+Earlier Chromium checks exercised registration, application confirmation, licensing review, slot selection,
+and booking confirmation against real MCP/database operations with a scripted model. Safe Markdown,
+inert HTML/XSS payloads, Arabic RTL, reference normalization, and mobile layouts were also checked.
+No JavaScript errors or horizontal overflow were observed at the tested desktop, phone, and tablet sizes.
+These checks used scripted model responses, so they do not measure live-model behavior.
 
-The user subsequently supplied 52 task outcomes from a live run with `nvidia/nemotron-3.5-lightning:free`.
-Thirty were blocked by HTTP 429 (A: seven; B: 23). Six correct A answers failed on Unicode policy-ID punctuation.
-See [the evidence-based error analysis](results/first-live-run-review.md). That run does not support an A/B quality
-conclusion. The new grading/verification/deadline/quota fixes passed offline regressions; no new provider inference
-was performed while reviewing the uploads. Additional tests cover checkpoints, resume, blocked-run coverage and
-safe tool-validation diagnostics. Original uploads were not overwritten or published as raw transcripts.
+Local HTTP checks returned 200 for the interface, health, session creation, and verification.
+Missing-key chat returned a structured provider error, and unauthorized finance access returned 403.
 
-1. Set `OPENROUTER_API_KEY` securely in ignored `.env` or environment settings and restart the backend.
-   Network settings must allow `openrouter.ai`; that requirement is saved in the cloud configuration draft.
-2. Pin `RAFEEQ_MODEL` to an available tool-calling model and verify the pricing assumptions in `.env`.
-3. Execute `uv run python -m rafeeq.evaluate live --trials 1` (26 agent tasks × two configurations).
-   Earlier attempts exited 2 because a key was absent; the fresh-clone attempt stopped because the model was
-   still the unpinned free router. A subsequent read-only authentication check using the current cloud binding
-   returned HTTP 401. Those were cloud checks before the user supplied the separate local live run described
-   above. Local credentials may differ. Collect a complete new paired run after quota recovers; do not label
-   the format-only regrade as a model rerun.
-4. Review real A/B transcripts, export synthetic-only CSVs, write end-to-end failure analysis, and repeat important
-   action/privacy cases if the provider budget permits. The free router is deliberately rejected for controlled evals.
-5. Execute the live prompt-injection experiment and retain reviewed bilingual workflow evidence.
-   A video is optional supporting evidence for this GitHub-only submission.
-6. Complete an accessibility audit, a native Windows rehearsal, and verify the new CI workflow on GitHub.
-   Fresh-clone installation and critical API/MCP checks on Linux passed as recorded above.
-   Desktop/mobile/RTL browser rendering was visually inspected; a full accessibility audit remains outstanding.
-7. Submit the GitHub link with the README as presentation, following the instructor's explicit instructions.
-   Slides and an oral presentation are not required. Review all linked evidence before submission.
+Windows installation of the complete `1be0aab` ZIP succeeded with Python 3.12.16, and evaluator help
+listed the diagnostic/resume options. An earlier mixed source copy was missing `evaluation_reporting.py`;
+extracting the complete ZIP resolved it. The native Windows full test suite has not yet been recorded.
+Linux regression tests emulate the Windows cp1252 issue and check UTF-8 Arabic MCP communication and
+timezone loading without an OS timezone database. The CI matrix includes Linux and Windows; its latest
+remote outcome has not been verified here.
 
-The environment draft saves installation/start instructions and the OpenRouter secret/destination requirement;
-saving does not inject a key, apply network changes, publish a snapshot, or push the code to GitHub.
+## Retrieval benchmark
 
-## Latest user-reported Windows diagnostic
+The benchmark uses 20 labelled bilingual queries across ten policy topics, with the same corpus and
+queries for both configurations. [Per-query results](results/retrieval.csv).
 
-A complete ZIP pinned to `1be0aab0520d487da1687db9d0cf04716f0b9d95` installed successfully with
-Python 3.12.16. The evaluator help exposed all new flags, fixing an earlier incomplete source copy that
-lacked `evaluation_reporting.py`. The user confirmed that a key was present and the model was pinned to
-`nvidia/nemotron-3.5-lightning:free`; no key value was shared.
-The diagnostic's first `fee-sign-en` case on A stopped as `blocked_provider` / `rate_limit`.
-The remaining seven cases did not run. No agent-quality conclusion can be drawn, and this is not a
-native Windows full-suite pass. The local results remain on the user's machine; only terminal evidence
-was reviewed. Do not overwrite that checkpoint or resume it with changed source.
+| Configuration | Top-1 | Top-3 |
+|---|---:|---:|
+| A: word TF-IDF | 15/20 (75%) | 18/20 (90%) |
+| B: word + character TF-IDF | 18/20 (90%) | 19/20 (95%) |
 
-## GitHub-only submission update validation
+A misses `permit-documents-ar` and `violations-ar` in its top three. B resolves the violations query but
+still misses the documents query. Arabic morphology and overlapping document terms remain weak spots.
+A larger held-out query set is needed before drawing broader conclusions. This benchmark measures
+retrieval alone; it does not test answer quality or action execution.
 
-The README now serves as the presentation under the instructor's instructions. No slides or oral talk
-are claimed as required. The evaluator writes aggregate `analysis.md` after every saved outcome,
-including interrupted/provider-blocked runs and resumed runs. It separates genuine grader failures
-from provider blocks, exposes missing coverage, identifies live versus scripted execution and omits
-raw prompts/replies. Categories are diagnostic signals, not an automatic causal explanation.
+## Live evaluation
 
-Validation in this Linux cloud instance: **65 pytest cases passed**, Ruff passed, the offline guarded
-lookup and unavailable egress-tool defence passed, and the retrieval benchmark reproduced A 15/20
-(top-1), 18/20 (top-3), B 18/20 (top-1), 19/20 (top-3). One upstream TestClient deprecation warning
-remains nonfailing. No `.env` or runtime data was modified. No new live-provider calls were made:
-this instance has no configured API key, while the user's separate Windows run was rate-limited.
-Tests cover aggregate report privacy, incomplete coverage and report refresh after checkpoint resume.
-Changes to evaluator source change the experiment fingerprint; start a new experiment on the updated
-source rather than resuming the old Windows checkpoint. Keep the old folder as availability evidence.
+My first run used `nvidia/nemotron-3.5-lightning:free` for 26 tasks on A and B. It produced 52 outcomes,
+30 blocked by HTTP 429. Six otherwise correct A answers also failed because of Unicode citation hyphens.
+The [live-run review](results/first-live-run-review.md) separates those grader defects from actual
+workflow failures. Formatting-only regrading is recorded separately from fresh inference results.
+
+After the fixes, the four-task Windows diagnostic stopped at `fee-sign-en` on A with
+`blocked_provider` / `rate_limit`. The other seven cases did not run. The configured key was present;
+a rate limit does not establish an invalid key. Earlier cloud checks had separate missing-key and 401
+failures, which do not describe the credentials used by the Windows run.
+
+The updated runner alternates A/B order, paces requests, and saves progress after each outcome.
+`analysis.md` reports coverage and grader categories without raw prompts or replies. It is a starting
+point for reviewing the local transcripts, not an automatic explanation of why a task failed.
+A changed model, source, task set, trial count, or request rate starts a new experiment.
+
+## Security check
+
+`rafeeq.redteam` uses an isolated unguarded fixture to show the private lookup an attack requests.
+The guarded lookup blocks that access, and the unavailable email tool is rejected. This tests the
+backend boundary directly. Live-model resistance to retrieved-document injection has not yet been measured.
+See the [security note](security.md).
+
+## Next checks
+
+- Finish the small live diagnostic after quota recovery, then run all 26 tasks on both configurations.
+- Inspect Arabic fluency, citations, tool behavior, privacy, and confirmation states in the real responses.
+- Run the live privacy/approval attacks and retain reviewed synthetic-only results.
+- Record a native Windows full-suite result and check the remote CI runs.
+- Complete a full accessibility audit; the existing browser checks cover only selected layouts and interactions.

@@ -1,9 +1,9 @@
-# First user-supplied live evaluation: error analysis
+# First live evaluation: what failed
 
 Reviewed 28 October 2026. Model recorded in the CSV: `nvidia/nemotron-3.5-lightning:free`.
-The user supplied summary, CSV, transcripts and terminal output from one trial of 26 tasks on A and B.
-This document distinguishes those original results from a format-only regrade and from subsequent code fixes.
-No new live-model calls were made while analysing these artifacts.
+My first run covered 26 tasks on A and B, with one trial each. I reviewed the summary, CSV, transcripts,
+and terminal output to separate model failures from provider blocks and grader errors. The regrade
+below uses the original answers; it does not include new model calls.
 
 ## Original scores and coverage
 
@@ -33,8 +33,8 @@ equivalent citation punctuation, whitespace and Arabic numerals. Wrong policy nu
 For example, a quote of 7500 does not satisfy an expected 750.
 
 Applying **only this format normalization to the existing transcripts** changes A to 14/26 and leaves B at 3/26.
-This is not a rerun, not evidence that the patched agent passed, and not a fair A/B comparison. The original
-answers and all other grading checks remain unchanged. See [per-case format review](first-live-format-review.csv).
+The original answers and all other grading checks remain unchanged; this measures the effect of the
+grader fix on old responses. Updated agent behavior still needs a fresh run. See [per-case format review](first-live-format-review.csv).
 The Arabic refund answer also mixes English words into Arabic prose; the functional checks do not grade fluency.
 
 Genuine A problems remain visible after that regrade:
@@ -51,7 +51,7 @@ Genuine A problems remain visible after that regrade:
 An additional refund proposal was successfully prepared before a subsequent summarization call hit 429. The
 new harness stops at the persisted proposal rather than making an unnecessary final provider call.
 
-## Changes made after reviewing the evidence
+## Fixes after the first run
 
 - Formatting-tolerant graders, with strict numeric and policy-ID boundaries.
 - Authorized status/deadline facts retrieved upfront; redundant verification cards suppressed only for the same
@@ -65,12 +65,13 @@ new harness stops at the persisted proposal rather than making an unnecessary fi
   requires a new experiment, preventing mixed comparisons.
 - Provider blocks are reported separately from agent failures; partial results expose unrun counts and coverage.
 
-The patch was tested with recorded/synthetic cases and mocked provider responses, not a new live inference run.
+Regression tests cover the fixes using recorded/synthetic cases and mocked provider responses.
+A fresh live run is still needed.
 
 ## Next experiment
 
 1. Check the OpenRouter dashboard for recovered minute/daily quota. Pacing cannot restore an exhausted daily allowance.
-2. Update the full project and preserve your local `.env`; keep the same fixed model initially.
+2. Use a complete updated project copy and keep the same fixed model initially.
 3. Start a small, paired diagnostic subset before the full suite:
 
 ```powershell
@@ -78,10 +79,10 @@ py -m uv run python -m rafeeq.evaluate live --task-ids fee-sign-en fee-foodtruck
 ```
 
 4. If blocked, use `--resume --output "the printed folder"` with the **same task IDs, trials and model** after recovery.
-   The old uploaded run cannot be resumed using the new checkpoint format; it remains baseline evidence.
+   The original run cannot be resumed using the new checkpoint format; it remains baseline evidence.
 5. Once the subset works, start a new full run. Retain original and patched scores separately and analyse remaining
-   functional/fluency failures. With one trial, do not claim repeated-run reliability or statistical significance.
+   functional/fluency failures. One trial will not establish repeated-run reliability or statistical significance.
 
-The uploaded responses report 189,295 input tokens and 7,904 output tokens. Those figures cover reported usage in
-these evaluation responses, not this assistant conversation, unreported attempts or provider billing. The reserved
+The original responses report 189,295 input tokens and 7,904 output tokens. Those figures cover reported usage in
+these evaluation responses, not unreported attempts or provider billing. The reserved
 USD field is a configured upper-bound estimate, not an actual charge.

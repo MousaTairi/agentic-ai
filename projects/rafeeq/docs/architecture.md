@@ -1,4 +1,7 @@
-# Architecture and state
+# Architecture
+
+I kept Rafeeq as one agent loop with a separate read-only MCP server. Python handles access checks
+and confirmations; the model chooses tools and writes replies. SQLite holds the state between turns.
 
 ```mermaid
 flowchart TD
@@ -57,4 +60,5 @@ The model never receives the form's mobile or ID digits. Model-driven lookup →
 Public chat → bounded SQLite history; private task replies → generic context placeholder rather than saved facts.
 The browser renders a small Markdown subset into safe DOM nodes; arbitrary model HTML remains inert text.
 
-Use the existing checkout; no additional worktree is needed. Database processes must restart in fresh cloud tasks.
+Runtime data stays in `runtime/` across restarts. The server runs as a single worker; background
+processes need to be started again when moving to a new machine.
