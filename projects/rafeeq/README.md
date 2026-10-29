@@ -318,12 +318,9 @@ would need stronger identity, account/IP rate limits, retention controls, and op
 
 ## Course background and credits
 
-I built Rafeeq as my accomplishment project for the **Agentic-AI** course at SDAIA Academy,
+I built Rafeeq as my accomplishment project for the **Advanced Agentic AI Systems Engineering** course at SDAIA Academy,
 following the “Rafeeq in production” track.
-
 - [Course repository](https://github.com/SDAIAAcademy/agentic-ai)
-- [Course page](https://sdaiaacademy.github.io/agentic-ai/)
-- [Project requirements and implementation](docs/sdaia-coverage.md)
 
 The course requirements cover a multi-step agent with at least three tools including MCP, context and
 memory/retrieval with a budget rule, human approval for a write action, step/cost budgets, 15+ evaluation
